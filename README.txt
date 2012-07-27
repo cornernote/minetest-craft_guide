@@ -6,25 +6,26 @@ Provides items that will show you how to craft any craftable or cookable item.
 
 It works like this...
 build a craft_guide:sign_wall using default:stick shaped like a question mark:
-(X stick | - empty)
-- X X
-- X X
-- X -      (ok, so a question mark isn't perfect in a 3x3)  =)
+stick stick
+stick stick
+stick     
+
+(ok, so a question mark isn't perfect in a 3x3)  =)
 
 place the sign, then right click on it... it will open like a chest.
 
-to move to next/prev pages, drop an item into the next/prev slots under the items
+to see the recipe for an item, drop the item into the output slot
 
-to see the recipe for an item, drop the item into the craft slot (single left slot)
-
-you can bookmark items using the block on the right (remove from bookmarks with the single slot above)
+you can bookmark items using the block on the right
 
 
 -----------
 LICENSE
 -----------
 
-GNU General Public License (applies to all parts)
+Copyright 2012 by cornernote
+
+GNU General Public License
 http://www.gnu.org/copyleft/gpl.html
 
 
@@ -34,5 +35,7 @@ CREDITS
 
 cornernote - author
 marktraceur - help in irc
-ashenk69 - author of creative_inventory (parts of that were copied to make the gui)
+ashenk69 - author of creative_inventory which inspired me to make this
 darkrose - updating core to support a craft registry
+cactuz_pl - nodebox for the lcd
+many others that make up the minetest community!

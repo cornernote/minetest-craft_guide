@@ -1,320 +1,346 @@
 ----------------------------------
 -- Craft Guide for MineTest 0.4 --
+-- Copyright 2012 by cornernote --
+-- Lisence: GPL                 --
 ----------------------------------
 
-----------------------------------
--- DESCRIPTION
-----------------------------------
--- Provides items that will show you how to craft any craftable or cookable item.
-----------------------------------
+local version = "0.1.1"
 
-----------------------------------
--- LICENSE
-----------------------------------
--- GNU General Public License
--- http://www.gnu.org/copyleft/gpl.html
-----------------------------------
+local craft_guide_inventory = {}
 
-----------------------------------
--- CREDITS
-----------------------------------
--- cornernote - author
--- marktraceur - help in irc
--- ashenk69 - author of creative_inventory (parts of that were copied to make the gui)
--- darkrose - updating core to support a craft registry
-----------------------------------
-
-----------------------------------
--- NOTES
-----------------------------------
---
--- version 0.4.dev-20120606-c57e508 and below
---
--- Due to a limit in the core you will not see ALL recipies.  You will only see the ones
--- that were loaded after this mod.
---
--- The screenshot contains no additional mods, so if you see less than this you are missing some.
--- 
--- If you would like to see ALL the recipies, and not just 
--- the ones loaded after this module, please follow the 3 steps below:
---
--- 1) Copy register_craft.lua to games/minetest_game/mods/default/
---
--- 2) The following line must be placed in your games/minetest_game/mods/default/init.lua
--- dofile(minetest.get_modpath("default").."/register_craft.lua") -- place this line into default/init.lua
---
--- 3) the following line must be removed
---dofile(minetest.get_modpath("craft_guide").."/register_craft.lua") -- comment out this line
---
-----------------------------------
-
-----------------------------------
--- VERSION HISTORY
-----------------------------------
--- 0.0.3 (planned)
--- use core craft registry
-----------------------------------
--- 0.0.2
--- added bookmarks
--- added support for shapeless recipies
--- added support for output quantity
--- changed name of the sign to "Learn to Craft"
--- fixed bug causing non-building/cooking crafts to not register (eg cooking itself did not load)
--- fixed bug causing game to crash when viewing non-craftable items
-----------------------------------
--- 0.0.1 
--- initial release
-----------------------------------
-
-
-
-
-----------------------------------
--- THE CODE
-----------------------------------
-local version = "0.0.2"
-craft_guide_start = 0
-craft_guide_items = {}
-
--- PAGINATION
-local function paginate(meta, start)
-	local node
-	local name
-	local count = 0
+craft_guide_inventory.set_craft_guide_formspec = function(meta, start_i, pagenum)
+	pagenum = math.floor(pagenum)
+	local pagemax = math.floor((craft_guide_inventory.craft_guide_inventory_size-1) / (5*14) + 1)
+	meta:set_string("formspec",
+		"size[14,10;]"..
+		"label[0,0;--== Learn to Craft ==--]"..
+		"label[0,0.4;Drag an item to the Output box]"..
+		"label[9,0.2;page "..tostring(pagenum).." of "..tostring(pagemax).."]"..
+		"button[11,0;1.5,1;craft_guide_prev;<<]"..
+		"button[12.5,0;1.5,1;craft_guide_next;>>]"..
+		"list[detached:craft_guide;main;0,1;14,5;"..tostring(start_i).."]"..
+		"label[0,6.5;Output]"..
+		"list[current_name;output;0,7;1,1;]"..
+		"label[2,6.5;Inventory Craft]"..
+		"list[current_name;build;2,7;3,3;]"..
+		"label[6,6.5;Cook]"..
+		"list[current_name;cook;6,7;1,1;]"..
+		"label[6,8.5;Fuel]"..
+		"list[current_name;fuel;6,9;1,1;]"..
+		"label[8,6.5;Bookmarks]"..
+		"list[current_name;bookmark;8,7;6,3;]")
 	local inv = meta:get_inventory()
-	if start > #craft_guide_items then
-		local remain = #craft_guide_items%56
-		start = #craft_guide_items-remain
-	end
-	if start < 0 then
-		start = 0
-	end
-	if not inv:is_empty("main") then
-		for var=0,inv:get_size("main"),1 do
-			inv:set_stack("main", var, nil)
-		end
-	end
-	for node,name in pairs(craft_guide_items) do
-		if count >= start then
-			inv:add_item("main", name)
-		end
-		count = count+1
-	end
-	craft_guide_start = start
+	inv:set_size("output", 1)
+	inv:set_size("build", 3*3)
+	inv:set_size("cook", 1)
+	inv:set_size("fuel", 1)
+	inv:set_size("bookmark", 6*3)
 end
 
+craft_guide_inventory.on_receive_fields = function(pos, formname, fields, player)
+	-- Figure out current page from formspec
+	local current_page = 0
+	local meta = minetest.env:get_meta(pos);
+	local formspec = meta:get_string("formspec")
+	local start_i = string.match(formspec, "list%[detached:craft_guide;main;[%d.]+,[%d.]+;[%d.]+,[%d.]+;(%d+)%]")
+	start_i = tonumber(start_i) or 0
+
+	if fields.craft_guide_prev then
+		start_i = start_i - 5*14
+	end
+	if fields.craft_guide_next then
+		start_i = start_i + 5*14
+	end
+
+	if start_i < 0 then
+		start_i = start_i + 5*14
+	end
+	if start_i >= craft_guide_inventory.craft_guide_inventory_size then
+		start_i = start_i - 5*14
+	end
+		
+	if start_i < 0 or start_i >= craft_guide_inventory.craft_guide_inventory_size then
+		start_i = 0
+	end
+
+	craft_guide_inventory.set_craft_guide_formspec(meta, start_i, start_i / (5*14) + 1)
+end
+
+
+
 -- UPDATE RECIPE
-local function updateRecipe(meta, player, stack)
+craft_guide_inventory.update_recipe = function(meta, player, stack)
+	minetest.log("action", "[craft_guide] "..player:get_player_name().." requests recipe for "..stack:get_name())
+
+	-- clear out build items
 	local inv = meta:get_inventory()
-	local craft = crafts[stack:get_name()];
-	
 	for var=0,inv:get_size("build"),1 do
 		inv:set_stack("build", var, nil)
 	end
 	inv:set_stack("cook", 1, nil)
 	inv:set_stack("fuel", 1, nil)
 
-	inv:set_stack("output", 1, stack:get_name())
-	
-	if crafts[stack:get_name()] == nil then
+	-- ensure we have a recipe
+	local craft_recipe = minetest.get_craft_recipe(stack:get_name());
+	if craft_recipe.items == nil then
 		minetest.chat_send_player(player:get_player_name(), "no recipe available for "..stack:get_name())
 		return
 	end
 	
-	local itemstack = ItemStack(craft.output)
-	inv:set_stack("output", 1, itemstack)
+	-- show me the unknown items
+	print(dump(craft_recipe.items))
+	--minetest.chat_send_player(player:get_player_name(), "recipe for "..stack:get_name()..": "..dump(craft_recipe.items))
+
+	-- output with quantity
+	local craft_result = minetest.get_craft_result(craft_recipe);
+	local itemstack = ItemStack(craft_result.item)
+	if itemstack:get_count() > 0 then
+		inv:set_stack("output", 1, itemstack)
+	else
+		inv:set_stack("output", 1, stack)
+	end
 
 	-- cook
-	if craft.type == "cooking" then
-		inv:set_stack("cook", 1, craft.recipe)
+	if craft_recipe.type == "cooking" then
+		inv:set_stack("cook", 1, craft_recipe.items['0'])
 		return
 	end
 	-- fuel
-	if craft.type == "fuel" then
-		inv:set_stack("fuel", 1, craft.recipe)
+	if craft_recipe.type == "fuel" then
+		inv:set_stack("fuel", 1, craft_recipe.items['0'])
 		return
 	end
 	-- build (shaped or shapeless)
-	if craft.recipe[1] then
-		if (type(craft.recipe[1]) == "string") then
-			inv:set_stack("build", 1, craft.recipe[1])
+	
+	if craft_recipe.items['0'] then
+		inv:set_stack("build", 1, craft_recipe.items['0'])
+	end
+	if craft_recipe.items['1'] then
+		if craft_recipe.width == 1 then
+			inv:set_stack("build", 4, craft_recipe.items['1'])
 		else
-			if craft.recipe[1][1] then
-				inv:set_stack("build", 1, craft.recipe[1][1])
-			end
-			if craft.recipe[1][2] then
-				inv:set_stack("build", 2, craft.recipe[1][2])
-			end
-			if craft.recipe[1][3] then
-				inv:set_stack("build", 3, craft.recipe[1][3])
-			end
+			inv:set_stack("build", 2, craft_recipe.items['1'])
 		end
 	end
-	if craft.recipe[2] then
-		if (type(craft.recipe[2]) == "string") then
-			inv:set_stack("build", 2, craft.recipe[2])
+	if craft_recipe.items['2'] then
+		if craft_recipe.width == 1 then
+			inv:set_stack("build", 7, craft_recipe.items['2'])
+		elseif craft_recipe.width == 2 then
+			inv:set_stack("build", 4, craft_recipe.items['2'])
 		else
-			if craft.recipe[2][1] then
-				inv:set_stack("build", 4, craft.recipe[2][1])
-			end
-			if craft.recipe[2][2] then
-				inv:set_stack("build", 5, craft.recipe[2][2])
-			end
-			if craft.recipe[2][3] then
-				inv:set_stack("build", 6, craft.recipe[2][3])
-			end
+			inv:set_stack("build", 3, craft_recipe.items['2'])
 		end
 	end
-	if craft.recipe[3] then
-		if (type(craft.recipe[3]) == "string") then
-			inv:set_stack("build", 3, craft.recipe[3])
+	if craft_recipe.items['3'] then
+		if craft_recipe.width == 2 then
+			inv:set_stack("build", 5, craft_recipe.items['3'])
 		else
-			if craft.recipe[3][1] then
-				inv:set_stack("build", 7, craft.recipe[3][1])
-			end
-			if craft.recipe[3][2] then
-				inv:set_stack("build", 8, craft.recipe[3][2])
-			end
-			if craft.recipe[3][3] then
-				inv:set_stack("build", 9, craft.recipe[3][3])
-			end
+			inv:set_stack("build", 4, craft_recipe.items['3'])
 		end
 	end
-	if craft.recipe[4] then
-		if (type(craft.recipe[4]) == "string") then
-			inv:set_stack("build", 4, craft.recipe[4])
+	if craft_recipe.items['4'] then
+		if craft_recipe.width == 2 then
+			inv:set_stack("build", 7, craft_recipe.items['4'])
+		else
+			inv:set_stack("build", 5, craft_recipe.items['4'])
 		end
 	end
-	if craft.recipe[5] then
-		if (type(craft.recipe[5]) == "string") then
-			inv:set_stack("build", 5, craft.recipe[5])
+	if craft_recipe.items['5'] then
+		if craft_recipe.width == 2 then
+			inv:set_stack("build", 8, craft_recipe.items['5'])
+		else
+			inv:set_stack("build", 6, craft_recipe.items['5'])
 		end
 	end
-	if craft.recipe[6] then
-		if (type(craft.recipe[6]) == "string") then
-			inv:set_stack("build", 6, craft.recipe[6])
-		end
+	if craft_recipe.items['6'] then
+		inv:set_stack("build", 7, craft_recipe.items['6'])
 	end
-	if craft.recipe[7] then
-		if (type(craft.recipe[7]) == "string") then
-			inv:set_stack("build", 7, craft.recipe[7])
-		end
+	if craft_recipe.items['7'] then
+		inv:set_stack("build", 8, craft_recipe.items['7'])
 	end
-	if craft.recipe[8] then
-		if (type(craft.recipe[8]) == "string") then
-			inv:set_stack("build", 8, craft.recipe[8])
-		end
-	end
-	if craft.recipe[9] then
-		if (type(craft.recipe[9]) == "string") then
-			inv:set_stack("build", 9, craft.recipe[9])
-		end
+	if craft_recipe.items['8'] then
+		inv:set_stack("build", 9, craft_recipe.items['8'])
 	end
 end
 
 -- REGISTER CRAFT SIGN NODE
 minetest.register_node("craft_guide:sign_wall", {
-	description = "Learn to Craft",
+	description = "Craft Sign",
 	drawtype = "signlike",
-	tiles ={"default_sign_wall.png"},
-	inventory_image = "default_sign_wall.png",
-	wield_image = "default_sign_wall.png",
-	paramtype = "light",
+	tiles = {"craft_guide_sign.png"},
+	inventory_image = "craft_guide_sign.png",
+	paramtype = 'light',
 	paramtype2 = "wallmounted",
 	sunlight_propagates = true,
 	walkable = false,
+	groups = {choppy=2,dig_immediate=2},
+	sounds = default.node_sound_defaults(),
 	selection_box = {
 		type = "wallmounted",
 	},
-	groups = {choppy=2,dig_immediate=2},
-	legacy_wallmounted = true,
-	sounds = default.node_sound_defaults(),
 	on_construct = function(pos)
-		local meta = minetest.env:get_meta(pos)
-		meta:set_string("formspec",
-			"invsize[14,9;]"..
-			"list[current_name;main;0,0;14,4;]"..
-			"list[current_name;previous;6,4;1,1;]"..
-			"list[current_name;next;7,4;1,1;]"..
-			"list[current_name;output;0,6;1,1;]"..
-			"list[current_name;build;2,6;3,3;]"..
-			"list[current_name;cook;6,6;1,1;]"..
-			"list[current_name;fuel;6,8;1,1;]"..
-			"list[current_name;bookmark;8,6;6,3;]"..
-			"list[current_name;bin;13,5;1,1;]")
-		meta:set_string("infotext", "Learn to Craft")
-		local inv = meta:get_inventory()
-		inv:set_size("main", 14*4)
-		inv:set_size("previous", 1)
-		inv:set_size("next", 1)
-		inv:set_size("output", 1)
-		inv:set_size("build", 3*3)
-		inv:set_size("cook", 1)
-		inv:set_size("fuel", 1)
-		inv:set_size("bookmark", 6*3)
-		inv:set_size("bin", 1)
-		local node
-		craft_guide_items = {}
-		for node in pairs(minetest.registered_items) do
-			if crafts[node] then
-				table.insert(craft_guide_items, {name = node})
+		craft_guide_inventory.set_craft_guide_formspec(minetest.env:get_meta(pos), 0, 1)
+	end,
+	on_receive_fields = craft_guide_inventory.on_receive_fields,
+	allow_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
+		if from_list == to_list then
+			return count
+		end
+		--print("allow_metadata_inventory_move to list: "..to_list)
+		if to_list == "output" or to_list == "bookmark" then
+			local meta = minetest.env:get_meta(pos)
+			local inv = meta:get_inventory()
+			local stack = inv:get_stack(from_list, from_index);
+			inv:set_stack(to_list, to_index, stack)
+			if to_list == "output" then
+				craft_guide_inventory.update_recipe(meta, player, stack)
 			end
 		end
-		table.sort(craft_guide_items, function(a,b)
-			return a.name < b.name
-		end)
-		paginate(meta, craft_guide_start)
+		return 0
 	end,
-	can_dig = function(pos,player)
-		craft_guide_start = 0
-		local meta = minetest.env:get_meta(pos);
-		local inv = meta:get_inventory()
-		return true
-	end,
-	on_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
-		local meta = minetest.env:get_meta(pos)
-		local inv = meta:get_inventory()
-		if to_list == "previous" then
-			minetest.log("action", "[craft_guide] "..player:get_player_name().." change to previous page in craft_guide:sign_wall ")
-			paginate(meta, craft_guide_start-inv:get_size("main"))
-			return
+	allow_metadata_inventory_put = function(pos, listname, index, stack, player)
+		--print("allow_metadata_inventory_put to list: "..listname)
+		if listname == "bookmark" then
+			return 1
 		end
-		if to_list == "next" then
-			minetest.log("action", "[craft_guide] "..player:get_player_name().." change to next page in craft_guide:sign_wall ")
-			paginate(meta, craft_guide_start+inv:get_size("main"))
-			return
+		if listname == "output" then
+			local meta = minetest.env:get_meta(pos)
+			if listname == "output" then
+				craft_guide_inventory.update_recipe(meta, player, stack)
+				return 0
+			end
 		end
-		if to_list == "output" then
-			minetest.log("action", "[craft_guide] "..player:get_player_name().." requests recipe for "..inv:get_stack(from_list, from_index):get_name())
-			updateRecipe(meta, player, inv:get_stack(from_list, from_index))
-			return
-		end
-		if to_list == "bookmark" then
-			minetest.log("action", "[craft_guide] "..player:get_player_name().." adds to bookmark "..inv:get_stack(from_list, from_index):get_name())
-			inv:set_stack(to_list, to_index, inv:get_stack(from_list, from_index))
-			return
-		end
-		if to_list == "bin" and from_list == "bookmark" then
-			minetest.log("action", "[craft_guide] "..player:get_player_name().." removes from bookmark "..inv:get_stack(from_list, from_index):get_name())
-			inv:set_stack(from_list, from_index, nil)
-			return
-		end
+		return 0
 	end,
 })
 
 -- REGISTER CRAFT SIGN RECIPE
 minetest.register_craft({
-	output = 'node "craft_guide:sign_wall" 1',
+	output = 'craft_guide:sign_wall',
 	recipe = {
-		{'', 'node "default:stick"', 'node "default:stick"'},
-		{'', 'node "default:stick"', 'node "default:stick"'},
-		{'', 'node "default:stick"', ''},
+		{'default:stick', 'default:stick'},
+		{'default:stick', 'default:stick'},
+		{'default:stick', ''},
 	}
 })
 
+-- REGISTER CRAFT SIGN NODE
+minetest.register_node("craft_guide:lcd_pc", {
+	description = "Craft PC",
+	drawtype = "nodebox",
+	tiles = {
+		"craft_guide_pc_grey.png",
+		"craft_guide_pc_grey.png",
+		"craft_guide_pc_grey.png",
+		"craft_guide_pc_grey.png",
+		"craft_guide_pc_black.png",
+		"craft_guide_pc_screen.png",
+	},
+	paramtype = 'light',
+	paramtype2 = "facedir",
+	sunlight_propagates = true,
+	walkable = false,
+	selection_box = {type="regular"},
+	groups = {choppy=2,dig_immediate=2},
+	-- thanks cactuz_pl for the nodebox code!  =)
+	node_box = {
+        type = "fixed",
+        fixed = {
+            {-1.0000000e-1,-0.45259861,2.5136044e-2, 0.10000000,-2.5986075e-3,-2.4863956e-2},
+            {-0.40006064,-0.25615262,-0.13023723, -0.37006064,0.26767738,-0.16023723},
+            {0.37054221,-0.25615274,-0.13023723, 0.40054221,0.26767750,-0.16023723},
+            {-0.40000000,-0.30600000,-0.13023723, 0.40000000,-0.25600000,-0.16023723},
+            {-0.40000000,0.26433021,-0.12945597, 0.40000000,0.29433021,-0.15945597},
+            {-0.35000000,-0.25514168,-2.9045502e-2, 0.35000000,0.24485832,-7.9045502e-2},
+            {-0.40000000,-0.30617002,-8.0237234e-2, 0.40000000,0.29382998,-0.13023723},
+            {-0.25000000,-0.50000000,0.25000000, 0.25000000,-0.45000000,-0.25000000}
+        },
+    },
+	sounds = default.node_sound_defaults(),
+	on_construct = function(pos)
+		craft_guide_inventory.set_craft_guide_formspec(minetest.env:get_meta(pos), 0, 1)
+	end,
+	on_receive_fields = craft_guide_inventory.on_receive_fields,
+	allow_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
+		if from_list == to_list then
+			return count
+		end
+		--print("allow_metadata_inventory_move to list: "..to_list)
+		if to_list == "output" or to_list == "bookmark" then
+			local meta = minetest.env:get_meta(pos)
+			local inv = meta:get_inventory()
+			local stack = inv:get_stack(from_list, from_index);
+			inv:set_stack(to_list, to_index, stack)
+			if to_list == "output" then
+				craft_guide_inventory.update_recipe(meta, player, stack)
+			end
+		end
+		return 0
+	end,
+	allow_metadata_inventory_put = function(pos, listname, index, stack, player)
+		--print("allow_metadata_inventory_put to list: "..listname)
+		if listname == "bookmark" then
+			return 1
+		end
+		if listname == "output" then
+			local meta = minetest.env:get_meta(pos)
+			if listname == "output" then
+				craft_guide_inventory.update_recipe(meta, player, stack)
+				return 0
+			end
+		end
+		return 0
+	end,
+})
+
+-- REGISTER CRAFT PC RECIPE
+minetest.register_craft({
+	output = 'craft_guide:lcd_pc',
+	recipe = {
+		{'craft_guide:sign_wall'},
+		{'default:glass'},
+		{'stairs:slab_stone'},
+	}
+})
+
+-- AFTER MINETEST STARTS
+minetest.after(0, function()
+	local inv = minetest.create_detached_inventory("craft_guide", {
+		allow_move = function(inv, from_list, from_index, to_list, to_index, count, player)
+			return 0
+		end,
+		allow_put = function(inv, listname, index, stack, player)
+			return -1
+		end,
+		allow_take = function(inv, listname, index, stack, player)
+			return -1
+		end,
+		on_move = function(inv, from_list, from_index, to_list, to_index, count, player)
+		end,
+		on_put = function(inv, listname, index, stack, player)
+		end,
+		on_take = function(inv, listname, index, stack, player)
+		end,
+	})
+	local craft_guide_list = {}
+	for name,def in pairs(minetest.registered_items) do
+		local craft_recipe = minetest.get_craft_recipe(name);
+		if craft_recipe.items ~= nil then
+			if (not def.groups.not_in_craft_guide_inventory or def.groups.not_in_craft_guide_inventory == 0)
+					--and (not def.groups.not_in_creative_inventory or def.groups.not_in_creative_inventory == 0)
+					and def.description and def.description ~= "" then
+				table.insert(craft_guide_list, name)
+			end
+		end
+	end
+	table.sort(craft_guide_list)
+	inv:set_size("main", #craft_guide_list)
+	for _,itemstring in ipairs(craft_guide_list) do
+		inv:add_item("main", ItemStack(itemstring))
+	end
+	craft_guide_inventory.craft_guide_inventory_size = #craft_guide_list
+	print("craft_guide inventory size: "..dump(craft_guide_inventory.craft_guide_inventory_size))
+end)
+
 -- LOG THAT WE STARTED
 minetest.log("action", "[craft_guide] "..version.." loaded")
-
-----------------------------------
--- THE END - thanks for reading =)
-----------------------------------
