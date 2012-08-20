@@ -4,7 +4,7 @@
 -- Lisence: GPL                 --
 ----------------------------------
 
-local version = "0.1.1"
+local version = "0.1.2"
 
 local craft_guide_inventory = {}
 
@@ -304,7 +304,7 @@ minetest.register_craft({
 })
 
 -- AFTER MINETEST STARTS
-minetest.after(0, function()
+minetest.after(10, function()
 	local inv = minetest.create_detached_inventory("craft_guide", {
 		allow_move = function(inv, from_list, from_index, to_list, to_index, count, player)
 			return 0
