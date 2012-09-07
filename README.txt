@@ -52,6 +52,25 @@ you can bookmark items using the block on the right
 
 
 ----------------------------------
+SOME ITEMS NOT LOADING?
+----------------------------------
+
+If items are not loading then it is probably because craft_guide is loaded after the other items. 
+
+To fix this simply create a depends.txt in the module in question, and add the text "craft_guide".
+
+EG: crafts from default mod are not available - create games/minetest_game/default/depends.txt with this inside:
+craft_guide
+
+
+----------------------------------
+MY ITEM IS SECRET, HOW CAN I HIDE IT?
+----------------------------------
+
+In your node definition, set groups={not_in_craft_guide}
+
+
+----------------------------------
 CREDITS
 ----------------------------------
 
@@ -62,32 +81,3 @@ darkrose - updating core to support a craft registry
 cactuz_pl - nodebox for the lcd
 many others that make up the minetest community!
 
-
-
-----------------------------------
-VERSION HISTORY
-----------------------------------
-
-0.1.1
-- complete rewrite of how inventory is stored (copied from new core creative inventory)
-- use new core craft registry (no more core hack required)
-- use new formspec (next/prev buttons, text, etc)
-- added a object - craft_guide:lcd_pc
-- added textures
-
-----------------------------------
-
-0.0.2
-- added bookmarks
-- added support for shapeless recipies
-- added support for output quantity
-- changed name of the sign to "Learn to Craft"
-- fixed bug causing non-building/cooking crafts to not register (eg cooking itself did not load)
-- fixed bug causing game to crash when viewing non-craftable items
-
-----------------------------------
-
-0.0.1 
-- initial release
-
-----------------------------------
