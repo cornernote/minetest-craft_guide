@@ -26,35 +26,11 @@ minetest.register_node("craft_guide:sign_wall", {
 	selection_box = {
 		type = "wallmounted",
 	},
-	on_construct = function(pos)
-		craft_guide.set_craft_guide_formspec(minetest.env:get_meta(pos), 0, 1)
-	end,
+	on_construct = craft_guide.on_construct,
 	on_receive_fields = craft_guide.on_receive_fields,
-	allow_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
-		if from_list == to_list then
-			return count
-		end
-		if to_list == "output" or to_list == "bookmark" then
-			local meta = minetest.env:get_meta(pos)
-			local inv = meta:get_inventory()
-			local stack = inv:get_stack(from_list, from_index);
-			inv:set_stack(to_list, to_index, stack)
-			if to_list == "output" then
-				craft_guide.update_recipe(meta, player, stack)
-			end
-		end
-		return 0
-	end,
-	allow_metadata_inventory_put = function(pos, listname, index, stack, player)
-		if listname == "bookmark" then
-			minetest.env:get_meta(pos):get_inventory():set_stack(listname,index,stack)
-		end
-		if listname == "output" then
-			local meta = minetest.env:get_meta(pos)
-			craft_guide.update_recipe(meta, player, stack)
-		end
-		return 0
-	end,
+	allow_metadata_inventory_move = craft_guide.allow_metadata_inventory_move,
+	allow_metadata_inventory_put = craft_guide.allow_metadata_inventory_put,
+	allow_metadata_inventory_take = craft_guide.allow_metadata_inventory_take,
 })
 
 -- craft pc
@@ -90,36 +66,9 @@ minetest.register_node("craft_guide:lcd_pc", {
         },
     },
 	--sounds = default.node_sound_defaults(),
-	on_construct = function(pos)
-		craft_guide.set_craft_guide_formspec(minetest.env:get_meta(pos), 0, 1)
-	end,
+	on_construct = craft_guide.on_construct,
 	on_receive_fields = craft_guide.on_receive_fields,
-	allow_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
-		if from_list == to_list then
-			return count
-		end
-		if to_list == "output" or to_list == "bookmark" then
-			local meta = minetest.env:get_meta(pos)
-			local inv = meta:get_inventory()
-			local stack = inv:get_stack(from_list, from_index);
-			inv:set_stack(to_list, to_index, stack)
-			if to_list == "output" then
-				craft_guide.update_recipe(meta, player, stack)
-			end
-		end
-		return 0
-	end,
-	allow_metadata_inventory_put = function(pos, listname, index, stack, player)
-		if listname == "bookmark" then
-			return 1
-		end
-		if listname == "output" then
-			local meta = minetest.env:get_meta(pos)
-			if listname == "output" then
-				craft_guide.update_recipe(meta, player, stack)
-				return 0
-			end
-		end
-		return 0
-	end,
+	allow_metadata_inventory_move = craft_guide.allow_metadata_inventory_move,
+	allow_metadata_inventory_put = craft_guide.allow_metadata_inventory_put,
+	allow_metadata_inventory_take = craft_guide.allow_metadata_inventory_take,
 })

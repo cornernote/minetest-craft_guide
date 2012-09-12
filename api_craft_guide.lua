@@ -63,13 +63,22 @@ craft_guide.set_craft_guide_formspec = function(meta, start_i, pagenum)
 		"label[6,8.5;Fuel]"..
 		"list[current_name;fuel;6,9;1,1;]"..
 		"label[8,6.5;Bookmarks]"..
-		"list[current_name;bookmark;8,7;6,3;]")
+		"list[current_name;bookmark;8,7;6,3;]"..
+		"label[12,6.5;Bin ->]"..
+		"list[current_name;bin;13,6;1,1;]")
 	local inv = meta:get_inventory()
 	inv:set_size("output", 1)
 	inv:set_size("build", 3*3)
 	inv:set_size("cook", 1)
 	inv:set_size("fuel", 1)
 	inv:set_size("bookmark", 6*3)
+	inv:set_size("bin", 1)
+end
+
+
+-- on_construct
+craft_guide.on_construct = function(pos)
+	craft_guide.set_craft_guide_formspec(minetest.env:get_meta(pos), 0, 1)
 end
 
 
@@ -218,6 +227,7 @@ craft_guide.update_recipe = function(meta, player, stack)
 	end
 end
 
+
 -- update_recipe_minetest (using minetest builtin craft registry)
 craft_guide.update_recipe_minetest = function(meta, player, stack)
 	craft_guide.log(player:get_player_name().." requests recipe for "..stack:get_name())
@@ -355,4 +365,44 @@ craft_guide.create_detached_inventory = function()
 	end
 	craft_guide.craft_guide_size = #craft_guide_list
 	craft_guide.log("craft_guide_size: "..dump(craft_guide.craft_guide_size))
+end
+
+
+-- allow_metadata_inventory_move
+craft_guide.allow_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
+	if from_list == to_list then
+		return count
+	end
+	if to_list == "bin" then
+		minetest.env:get_meta(pos):get_inventory():set_stack(from_list,from_index,nil)
+	end
+	if to_list == "output" or to_list == "bookmark" then
+		local meta = minetest.env:get_meta(pos)
+		local inv = meta:get_inventory()
+		local stack = inv:get_stack(from_list, from_index);
+		inv:set_stack(to_list, to_index, stack)
+		if to_list == "output" then
+			craft_guide.update_recipe(meta, player, stack)
+		end
+	end
+	return 0
+end
+
+
+-- allow_metadata_inventory_put
+craft_guide.allow_metadata_inventory_put = function(pos, listname, index, stack, player)
+	if listname == "bookmark" then
+		minetest.env:get_meta(pos):get_inventory():set_stack(listname,index,stack)
+	end
+	if listname == "output" then
+		local meta = minetest.env:get_meta(pos)
+		craft_guide.update_recipe(meta, player, stack)
+	end
+	return 0
+end
+
+
+-- allow_metadata_inventory_take
+craft_guide.allow_metadata_inventory_take = function(pos, listname, index, stack, player)
+	return 0
 end
