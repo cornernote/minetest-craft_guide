@@ -324,7 +324,7 @@ craft_guide.create_detached_inventory = function()
 			return -1
 		end,
 		allow_take = function(inv, listname, index, stack, player)
-			return -1
+			return 0
 		end,
 		on_move = function(inv, from_list, from_index, to_list, to_index, count, player)
 		end,
@@ -334,21 +334,10 @@ craft_guide.create_detached_inventory = function()
 		end,
 	})
 	
-	--[[
 	local craft_guide_list = {}
 	for name,def in pairs(minetest.registered_items) do
-		local craft_recipe = minetest.get_craft_recipe(name);
-		if craft_recipe.items ~= nil then
-			if (not def.groups.not_in_craft_guide or def.groups.not_in_craft_guide == 0)
-					--and (not def.groups.not_in_creative_inventory or def.groups.not_in_creative_inventory == 0)
-					and def.description and def.description ~= "" then
-				table.insert(craft_guide_list, name)
-			end
-		end
-	end
-	]]--
-	local craft_guide_list = {}
-	for name,def in pairs(minetest.registered_items) do
+		-- local craft_recipe = minetest.get_craft_recipe(name);
+		-- if craft_recipe.items ~= nil then
 		local craft = craft_guide.crafts[name];
 		if craft ~= nil then
 			if (not def.groups.not_in_craft_guide or def.groups.not_in_craft_guide == 0)

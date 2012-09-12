@@ -34,7 +34,6 @@ minetest.register_node("craft_guide:sign_wall", {
 		if from_list == to_list then
 			return count
 		end
-		--print("allow_metadata_inventory_move to list: "..to_list)
 		if to_list == "output" or to_list == "bookmark" then
 			local meta = minetest.env:get_meta(pos)
 			local inv = meta:get_inventory()
@@ -47,16 +46,12 @@ minetest.register_node("craft_guide:sign_wall", {
 		return 0
 	end,
 	allow_metadata_inventory_put = function(pos, listname, index, stack, player)
-		--print("allow_metadata_inventory_put to list: "..listname)
 		if listname == "bookmark" then
-			return 1
+			minetest.env:get_meta(pos):get_inventory():set_stack(listname,index,stack)
 		end
 		if listname == "output" then
 			local meta = minetest.env:get_meta(pos)
-			if listname == "output" then
-				craft_guide.update_recipe(meta, player, stack)
-				return 0
-			end
+			craft_guide.update_recipe(meta, player, stack)
 		end
 		return 0
 	end,
@@ -103,7 +98,6 @@ minetest.register_node("craft_guide:lcd_pc", {
 		if from_list == to_list then
 			return count
 		end
-		--print("allow_metadata_inventory_move to list: "..to_list)
 		if to_list == "output" or to_list == "bookmark" then
 			local meta = minetest.env:get_meta(pos)
 			local inv = meta:get_inventory()
@@ -116,7 +110,6 @@ minetest.register_node("craft_guide:lcd_pc", {
 		return 0
 	end,
 	allow_metadata_inventory_put = function(pos, listname, index, stack, player)
-		--print("allow_metadata_inventory_put to list: "..listname)
 		if listname == "bookmark" then
 			return 1
 		end
