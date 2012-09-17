@@ -37,7 +37,7 @@ craft_guide.register_craft = function(options)
 	if itemstack:is_empty() then
 		return
 	end
-	craft_guide.log("registered craft for - "..itemstack:get_name())
+	--craft_guide.log("registered craft for - "..itemstack:get_name())
 	if craft_guide.crafts[itemstack:get_name()]==nil then
 		craft_guide.crafts[itemstack:get_name()] = {}
 	end
