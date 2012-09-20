@@ -160,7 +160,7 @@ craft_guide.update_recipe = function(meta, player, stack, alternate)
 	
 	-- show me the unknown items
 	craft_guide.log(dump(craft))
-	minetest.chat_send_player(player:get_player_name(), "recipe for "..stack:get_name()..": "..dump(craft))
+	--minetest.chat_send_player(player:get_player_name(), "recipe for "..stack:get_name()..": "..dump(craft))
 	
 	local itemstack = ItemStack(craft.output)
 	inv:set_stack("output", 1, itemstack)
