@@ -300,22 +300,19 @@ end
 
 -- allow_metadata_inventory_move
 craft_guide.allow_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
-	if from_list == to_list then
+	local meta = minetest.env:get_meta(pos)
+	local inv = meta:get_inventory()
+	if from_list == "bookmarks" and to_list == "bookmarks"  then
 		return count
 	end
-
-	local meta = minetest.env:get_meta(pos)
-	if to_list == "bin" then
-		meta:get_inventory():set_stack(from_list,from_index,nil)
+	if to_list == "bin" and (from_list == "output" or from_list == "bookmark") then
+		inv:set_stack(from_list,from_index,nil)
 	end
 	if to_list == "output" or to_list == "bookmark" then
-		meta:get_inventory():set_stack(to_list, to_index, inv:get_stack(from_list, from_index))
+		inv:set_stack(to_list, to_index, inv:get_stack(from_list, from_index))
 	end
 	if to_list == "output" then
-		craft_guide.update_recipe(meta, player, stack)
-	end
-	if from_list == "output" then
-		craft_guide.update_recipe(meta, player)
+		craft_guide.update_recipe(meta, player, inv:get_stack(from_list, from_index))
 	end
 	return 0
 end
