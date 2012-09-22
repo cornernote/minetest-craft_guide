@@ -1,36 +1,19 @@
 ----------------------------------
-MINETEST CRAFT GUIDE
+Craft Guide for Minetest
 ----------------------------------
 
 Copyright (C) 2012 cornernote, Brett O'Donnell <cornernote@gmail.com>
-
 Source Code: https://github.com/cornernote/minetest-craft_guide
 
+This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 3 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program; if not, write to the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 
 ----------------------------------
-License
-----------------------------------
-
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License along
-with this program; if not, write to the Free Software Foundation, Inc.,
-51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-
-
-
-----------------------------------
-DESCRIPTION
+Description
 ----------------------------------
 
 Provides items that will show you how to craft any craftable or cookable item.
@@ -48,7 +31,6 @@ place the sign, then right click on it... it will open like a chest.
 to see the recipe for an item, drop the item into the output slot
 
 you can bookmark items using the block on the right
-
 
 
 ----------------------------------
@@ -71,13 +53,11 @@ In your node definition, set groups={not_in_craft_guide}
 
 
 ----------------------------------
-CREDITS
+Credits
 ----------------------------------
 
-cornernote - author
 marktraceur - help in irc
 ashenk69 - author of creative_inventory which inspired me to make this
 darkrose - updating core to support a craft registry
 cactuz_pl - nodebox for the lcd
-many others that make up the minetest community!
 
