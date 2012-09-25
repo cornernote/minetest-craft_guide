@@ -62,12 +62,13 @@ craft_guide.get_craft_guide_formspec = function(meta, page, alternate)
 		alternates = #crafts
 	end
 	local formspec = "size[14,10;]"
-		.."label[0,0;--== Learn to Craft ==--]"
-		.."label[0,0.4;Drag an item to the Output box]"
-		.."label[9,0.2;page "..tostring(page).." of "..tostring(pages).."]"
-		.."button[11,0;1.5,1;craft_guide_prev;<<]"
-		.."button[12.5,0;1.5,1;craft_guide_next;>>]"
-		.."list[detached:craft_guide;main;0,1;14,5;"..tostring(start).."]"
+		.."label[0,5;--== Learn to Craft ==--]"
+		.."label[0,5.4;Drag any item to the Output box to see the]"
+		.."label[0,5.8;craft. Save your favorite items in Bookmarks.]"
+		.."label[9,5.2;page "..tostring(page).." of "..tostring(pages).."]"
+		.."button[11,5;1.5,1;craft_guide_prev;<<]"
+		.."button[12.5,5;1.5,1;craft_guide_next;>>]"
+		.."list[detached:craft_guide;main;0,0;14,5;"..tostring(start).."]"
 		.."label[0,6.5;Output]"
 		.."list[current_name;output;0,7;1,1;]"
 		.."label[2,6.5;Inventory Craft]"
@@ -78,7 +79,7 @@ craft_guide.get_craft_guide_formspec = function(meta, page, alternate)
 		.."list[current_name;fuel;6,9;1,1;]"
 		.."label[8,6.5;Bookmarks]"
 		.."list[current_name;bookmark;8,7;6,3;]"
-		.."label[12,6.5;Bin ->]"
+		.."label[12,6.1;Bin ->]"
 		.."list[current_name;bin;13,6;1,1;]"
 	if alternates > 1 then
 		formspec = formspec
