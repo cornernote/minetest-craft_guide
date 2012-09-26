@@ -19,38 +19,7 @@ Description
 
 Provides items that will show you how to craft any craftable or cookable item.
 
-It works like this...
-build a craft_guide:sign_wall using default:stick shaped like a question mark:
-stick stick
-stick stick
-stick     
-
-(ok, so a question mark isn't perfect in a 3x3)  =)
-
-place the sign, then right click on it... it will open like a chest.
-
-to see the recipe for an item, drop the item into the output slot
-
-you can bookmark items using the block on the right
-
-
-----------------------------------
-SOME ITEMS NOT LOADING?
-----------------------------------
-
-If items are not loading then it is probably because craft_guide is loaded after the other items. 
-
-To fix this simply create a depends.txt in the module in question, and add the text "craft_guide".
-
-EG: crafts from default mod are not available - create games/minetest_game/default/depends.txt with this inside:
-craft_guide
-
-
-----------------------------------
-MY ITEM IS SECRET, HOW CAN I HIDE IT?
-----------------------------------
-
-In your node definition, set groups={not_in_craft_guide}
+Place the sign, then right click on it... it will open like a chest. To see the recipe for an item, drop the item into the output slot.  You can also bookmark items by moving them to the bookmarks area.
 
 
 ----------------------------------
