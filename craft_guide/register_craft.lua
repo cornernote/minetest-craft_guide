@@ -31,3 +31,11 @@ minetest.register_craft({
 		{'stairs:slab_stone'},
 	}
 })
+minetest.register_craft({
+	output = 'craft_guide:lcd_pc',
+	recipe = {
+		{'craft_guide:sign_wall'},
+		{'default:glass'},
+		{'stairsplus:slab_stone'},
+	}
+})
