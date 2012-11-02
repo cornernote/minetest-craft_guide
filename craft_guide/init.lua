@@ -20,12 +20,6 @@ minetest.register_craft = function (options)
 	craft_guide.register_craft(options)
 end
 
--- after the server starts
-minetest.after(0, function()
-	-- create inventory
-	craft_guide.create_detached_inventory()
-end)
-
 -- register entities
 dofile(minetest.get_modpath("craft_guide").."/register_node.lua")
 dofile(minetest.get_modpath("craft_guide").."/register_craft.lua")

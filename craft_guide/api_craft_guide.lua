@@ -18,7 +18,6 @@ craft_guide = {}
 
 -- define api variables
 craft_guide.crafts = {}
-craft_guide.craft_guide_size = 0
 
 
 -- log
@@ -46,39 +45,54 @@ end
 
 
 -- get_craft_guide_formspec
-craft_guide.get_craft_guide_formspec = function(meta, page, alternate)
+craft_guide.get_craft_guide_formspec = function(meta, search, page, alternate)
+	if search == nil then 
+		search = meta:get_string("search")
+	end
 	if page == nil then 
 		page = craft_guide.get_current_page(meta) 
 	end
 	if alternate == nil then 
 		alternate = craft_guide.get_current_alternate(meta) 
 	end
+	local inv = meta:get_inventory()
+	local size = inv:get_size("main")
 	local start = (page-1) * (5*14) + 1
-	local pages = math.floor((craft_guide.craft_guide_size-1) / (5*14) + 1)
+	local pages = math.floor((size-1) / (5*14) + 1)
 	local alternates = 0
-	local stack = meta:get_inventory():get_stack("output",1)
+	local stack = inv:get_stack("output",1)
 	local crafts = craft_guide.crafts[stack:get_name()]
 	if crafts ~= nil then
 		alternates = #crafts
 	end
 	local formspec = "size[14,10;]"
+		.."list[current_name;main;0,0;14,5;"..tostring(start).."]"
+
 		.."label[0,5;--== Learn to Craft ==--]"
 		.."label[0,5.4;Drag any item to the Output box to see the]"
 		.."label[0,5.8;craft. Save your favorite items in Bookmarks.]"
+
+		.."field[6,5.4;2,1;craft_guide_search_box;;"..tostring(search).."]"
+		.."button[7.5,5.1;1.2,1;craft_guide_search_button;Search]"
+
 		.."label[9,5.2;page "..tostring(page).." of "..tostring(pages).."]"
 		.."button[11,5;1.5,1;craft_guide_prev;<<]"
 		.."button[12.5,5;1.5,1;craft_guide_next;>>]"
-		.."list[detached:craft_guide;main;0,0;14,5;"..tostring(start).."]"
+
 		.."label[0,6.5;Output]"
 		.."list[current_name;output;0,7;1,1;]"
+
 		.."label[2,6.5;Inventory Craft]"
 		.."list[current_name;build;2,7;3,3;]"
+
 		.."label[6,6.5;Cook]"
 		.."list[current_name;cook;6,7;1,1;]"
 		.."label[6,8.5;Fuel]"
 		.."list[current_name;fuel;6,9;1,1;]"
+
 		.."label[8,6.5;Bookmarks]"
 		.."list[current_name;bookmark;8,7;6,3;]"
+
 		.."label[12,6.1;Bin ->]"
 		.."list[current_name;bin;13,6;1,1;]"
 	if alternates > 1 then
@@ -100,6 +114,7 @@ craft_guide.on_construct = function(pos)
 	inv:set_size("fuel", 1)
 	inv:set_size("bookmark", 6*3)
 	inv:set_size("bin", 1)
+	craft_guide.create_inventory(inv)
 	meta:set_string("formspec",craft_guide.get_craft_guide_formspec(meta))
 end
 
@@ -108,7 +123,9 @@ end
 craft_guide.on_receive_fields = function(pos, formname, fields, player)
 	local meta = minetest.env:get_meta(pos);
 
-	local stack = meta:get_inventory():get_stack("output",1)
+	local inv = meta:get_inventory()
+	local size = inv:get_size("main",1)
+	local stack = inv:get_stack("output",1)
 	local crafts = craft_guide.crafts[stack:get_name()]
 	local alternate = craft_guide.get_current_alternate(meta)
 	local alternates = 0
@@ -117,15 +134,15 @@ craft_guide.on_receive_fields = function(pos, formname, fields, player)
 	end
 
 	local page = craft_guide.get_current_page(meta)
-	local pages = math.floor((craft_guide.craft_guide_size-1) / (5*14) + 1)
+	local pages = math.floor((size-1) / (5*14) + 1)
 
-	-- get an alternate recipe
-	if fields.alternate then
-		alternate = alternate+1
-		craft_guide.update_recipe(meta, player, stack, alternate)
-	end
-	if alternate > alternates then
-		alternate = 1
+	local search
+	
+	-- search
+	search = fields.craft_guide_search_box
+	meta:set_string("search", search)
+	if fields.craft_guide_search_button then
+		page = 1
 	end
 
 	-- change page
@@ -142,8 +159,18 @@ craft_guide.on_receive_fields = function(pos, formname, fields, player)
 		page = pages
 	end
 
+	-- get an alternate recipe
+	if fields.alternate then
+		alternate = alternate+1
+		craft_guide.update_recipe(meta, player, stack, alternate)
+	end
+	if alternate > alternates then
+		alternate = 1
+	end
+
 	-- update the formspec
-	meta:set_string("formspec",craft_guide.get_craft_guide_formspec(meta, page, alternate))
+	craft_guide.create_inventory(inv, search)
+	meta:set_string("formspec",craft_guide.get_craft_guide_formspec(meta, search, page, alternate))
 end
 
 
@@ -290,26 +317,8 @@ craft_guide.update_recipe = function(meta, player, stack, alternate)
 end
 
 
--- create_detached_inventory
-craft_guide.create_detached_inventory = function()
-	local inv = minetest.create_detached_inventory("craft_guide", {
-		allow_move = function(inv, from_list, from_index, to_list, to_index, count, player)
-			return 0
-		end,
-		allow_put = function(inv, listname, index, stack, player)
-			return -1
-		end,
-		allow_take = function(inv, listname, index, stack, player)
-			return 0
-		end,
-		on_move = function(inv, from_list, from_index, to_list, to_index, count, player)
-		end,
-		on_put = function(inv, listname, index, stack, player)
-		end,
-		on_take = function(inv, listname, index, stack, player)
-		end,
-	})
-	
+-- create_inventory
+craft_guide.create_inventory = function(inv, search)
 	local craft_guide_list = {}
 	for name,def in pairs(minetest.registered_items) do
 		-- local craft_recipe = minetest.get_craft_recipe(name);
@@ -319,18 +328,25 @@ craft_guide.create_detached_inventory = function()
 			if (not def.groups.not_in_craft_guide or def.groups.not_in_craft_guide == 0)
 					--and (not def.groups.not_in_creative_inventory or def.groups.not_in_creative_inventory == 0)
 					and def.description and def.description ~= "" then
-				table.insert(craft_guide_list, name)
+				if search then
+					if string.find(def.name, search) or string.find(def.description, search) then
+						table.insert(craft_guide_list, name)
+					end
+				else
+					table.insert(craft_guide_list, name)
+				end
 			end
 		end
 	end
 
 	table.sort(craft_guide_list)
+	for i=0,inv:get_size("main"),1 do
+		inv:set_stack("main", i, nil)
+	end
 	inv:set_size("main", #craft_guide_list)
 	for _,itemstring in ipairs(craft_guide_list) do
 		inv:add_item("main", ItemStack(itemstring))
 	end
-	craft_guide.craft_guide_size = #craft_guide_list
-	craft_guide.log("craft_guide_size: "..dump(craft_guide.craft_guide_size))
 end
 
 
@@ -338,9 +354,6 @@ end
 craft_guide.allow_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
 	local meta = minetest.env:get_meta(pos)
 	local inv = meta:get_inventory()
-	if from_list == "bookmarks" and to_list == "bookmarks"  then
-		return count
-	end
 	if to_list == "bin" and from_list == "output" then
 		inv:set_stack(from_list,from_index,nil)
 		craft_guide.update_recipe(meta, player, inv:get_stack(from_list, from_index))
@@ -350,28 +363,15 @@ craft_guide.allow_metadata_inventory_move = function(pos, from_list, from_index,
 	end
 	if to_list == "bookmark" then
 		inv:set_stack(to_list, to_index, inv:get_stack(from_list, from_index):get_name())
+		if from_list == "output" then
+			inv:set_stack(from_list,from_index,nil)
+		end
 	end
-	if to_list == "output" then
+	if to_list == "output" or from_list == "output" then
 		craft_guide.update_recipe(meta, player, inv:get_stack(from_list, from_index))
 	end
-	return 0
-end
-
-
--- allow_metadata_inventory_put
-craft_guide.allow_metadata_inventory_put = function(pos, listname, index, stack, player)
-	if listname == "bookmark" then
-		minetest.env:get_meta(pos):get_inventory():set_stack(listname,index,stack)
+	if from_list == "bookmarks" and to_list == "bookmarks"  then
+		return count
 	end
-	if listname == "output" then
-		local meta = minetest.env:get_meta(pos)
-		craft_guide.update_recipe(meta, player, stack)
-	end
-	return 0
-end
-
-
--- allow_metadata_inventory_take
-craft_guide.allow_metadata_inventory_take = function(pos, listname, index, stack, player)
 	return 0
 end
