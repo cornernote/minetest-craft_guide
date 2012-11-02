@@ -30,4 +30,4 @@ marktraceur - help in irc
 ashenk69 - author of creative_inventory which inspired me to make this
 darkrose - updating core to support a craft registry
 cactuz_pl - nodebox for the lcd
-
+Jeija - author of search crative inventory
