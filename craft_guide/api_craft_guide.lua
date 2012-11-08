@@ -375,3 +375,16 @@ craft_guide.allow_metadata_inventory_move = function(pos, from_list, from_index,
 	end
 	return 0
 end
+
+
+-- allow_metadata_inventory_put
+craft_guide.allow_metadata_inventory_put = function(pos, listname, index, stack, player)
+	return 0
+end
+
+
+-- allow_metadata_inventory_take
+craft_guide.allow_metadata_inventory_take = function(pos, listname, index, stack, player)
+	return 0
+end
+

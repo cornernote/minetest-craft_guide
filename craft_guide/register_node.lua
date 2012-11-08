@@ -29,6 +29,8 @@ minetest.register_node("craft_guide:sign_wall", {
 	on_construct = craft_guide.on_construct,
 	on_receive_fields = craft_guide.on_receive_fields,
 	allow_metadata_inventory_move = craft_guide.allow_metadata_inventory_move,
+	allow_metadata_inventory_put = craft_guide.allow_metadata_inventory_put,
+	allow_metadata_inventory_take = craft_guide.allow_metadata_inventory_take,
 })
 
 -- craft pc
@@ -67,4 +69,6 @@ minetest.register_node("craft_guide:lcd_pc", {
 	on_construct = craft_guide.on_construct,
 	on_receive_fields = craft_guide.on_receive_fields,
 	allow_metadata_inventory_move = craft_guide.allow_metadata_inventory_move,
+	allow_metadata_inventory_put = craft_guide.allow_metadata_inventory_put,
+	allow_metadata_inventory_take = craft_guide.allow_metadata_inventory_take,
 })
