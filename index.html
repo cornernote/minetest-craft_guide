@@ -139,9 +139,9 @@
             <p>The material used below are:</p>
             <ul>
                 <li><code>S</code> = <code>Stick</code></li>
-                <li><code>C</code> = <code>Craft Sign</code></li>
+                <li><code>X</code> = <code>Craft Sign</code></li>
                 <li><code>G</code> = <code>Glass</code></li>
-                <li><code>T</code> = <code>Stone Slab</code></li>
+                <li><code>C</code> = <code>Stone Slab</code></li>
                 <li><code>-</code> = <code>empty</code></li>
             </ul>
 
@@ -154,7 +154,7 @@ S--</pre>
                 </div>
                 <div class="col-lg-3">
                     <h4>Craft PC</h4>
-                <pre class="craft">S--
+                <pre class="craft">X--
 G--
 C--</pre>
                 </div>
@@ -167,12 +167,12 @@ C--</pre>
                 <div class="panel panel-default">
                     <div class="panel-heading">
                         <h4 class="panel-title">
-                            <a data-toggle="collapse" data-parent="#accordion" href="#faq-layoutvariables">
+                            <a data-toggle="collapse" data-parent="#accordion" href="#faq-notloading">
                                 Why are some items not loading?
                             </a>
                         </h4>
                     </div>
-                    <div id="faq-layoutvariables" class="panel-collapse collapse">
+                    <div id="faq-notloading" class="panel-collapse collapse">
                         <div class="panel-body">
                             <p>If crafts are not loading then it is probably because
                                 <code>craft_guide</code> is loaded after the other crafts.
@@ -190,12 +190,12 @@ C--</pre>
                 <div class="panel panel-default">
                     <div class="panel-heading">
                         <h4 class="panel-title">
-                            <a data-toggle="collapse" data-parent="#accordion" href="#faq-mustachehtmlencode">
+                            <a data-toggle="collapse" data-parent="#accordion" href="#faq-hiding">
                                 My item is secret, how can I hide it from players using this mod on my server?
                             </a>
                         </h4>
                     </div>
-                    <div id="faq-mustachehtmlencode" class="panel-collapse collapse">
+                    <div id="faq-hiding" class="panel-collapse collapse">
                         <div class="panel-body">
                             <p>In your node definition, set <code>groups={not_in_craft_guide}</code>. </p>
                         </div>
