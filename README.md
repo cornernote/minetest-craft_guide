@@ -13,7 +13,7 @@ Shows crafts for all loaded mods.
 
 - **[Documentation](http://cornernote.github.io/minetest-craft_guide)**
 - **[GitHub Project](https://github.com/cornernote/minetest-craft_guide)**
-- **[Minetest Forum](http://minetest.net/forum/viewtopic.php?id=2334)**
+- **[Minetest Forum](https://forum.minetest.net/viewtopic.php?id=2334)**
 
 ## Support
 
