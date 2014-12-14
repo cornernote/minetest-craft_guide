@@ -205,8 +205,6 @@ craft_guide.update_recipe = function(meta, player, stack, alternate)
 	if stack==nil then return end
 	inv:set_stack("output", 1, stack:get_name())
 
-	alternate = tonumber(alternate) or 1
-	craft_guide.log(player:get_player_name().." requests recipe "..alternate.." for "..stack:get_name())
 	local crafts = craft_guide.crafts[stack:get_name()]
 	
 	if crafts == nil then
@@ -214,13 +212,15 @@ craft_guide.update_recipe = function(meta, player, stack, alternate)
 		meta:set_string("formspec",craft_guide.get_craft_guide_formspec(meta))
 		return
 	end
+	alternate = tonumber(alternate) or 1
 	if alternate < 1 or alternate > #crafts then
 		alternate = 1
 	end
+	--craft_guide.log(player:get_player_name().." requests recipe "..alternate.." for "..stack:get_name())
 	local craft = crafts[alternate]
 	
 	-- show me the unknown items
-	craft_guide.log(dump(craft))
+	--craft_guide.log(dump(craft))
 	--minetest.chat_send_player(player:get_player_name(), "recipe for "..stack:get_name()..": "..dump(craft))
 	
 	local itemstack = ItemStack(craft.output)
