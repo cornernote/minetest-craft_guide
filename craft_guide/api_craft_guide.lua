@@ -208,7 +208,9 @@ craft_guide.update_recipe = function(meta, player, stack, alternate)
 	local crafts = craft_guide.crafts[stack:get_name()]
 	
 	if crafts == nil then
-		minetest.chat_send_player(player:get_player_name(), "no recipe available for "..stack:get_name())
+        if stack:get_name() ~= '' then
+            minetest.chat_send_player(player:get_player_name(), "no recipe available for "..stack:get_name())
+        end
 		meta:set_string("formspec",craft_guide.get_craft_guide_formspec(meta))
 		return
 	end
