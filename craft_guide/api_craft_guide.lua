@@ -19,6 +19,7 @@ craft_guide = {}
 -- define api variables
 craft_guide.crafts = {}
 craft_guide.groups = {}
+craft_guide.group_messages = {}
 
 
 -- log
@@ -195,6 +196,8 @@ end
 
 -- update_recipe
 craft_guide.update_recipe = function(meta, player, stack, alternate)
+    craft_guide.group_messages[player:get_player_name()] = {}
+
 	local inv = meta:get_inventory()
 	for i=0,inv:get_size("build"),1 do
 		inv:set_stack("build", i, nil)
@@ -218,12 +221,11 @@ craft_guide.update_recipe = function(meta, player, stack, alternate)
 	if alternate < 1 or alternate > #crafts then
 		alternate = 1
 	end
-	--craft_guide.log(player:get_player_name().." requests recipe "..alternate.." for "..stack:get_name())
+
 	local craft = crafts[alternate]
-	
 	local itemstack = ItemStack(craft.output)
 	inv:set_stack("output", 1, itemstack)
-
+    
 	-- cook
 	if craft.type == "cooking" then
 		inv:set_stack("cook", 1, craft_guide.get_item_name(craft.recipe, player))
@@ -401,7 +403,10 @@ craft_guide.get_item_name = function(item_name, player)
                 item_name = craft_guide.groups[string.sub(group_name, 7)].item_name
                 other_items = craft_guide.groups[string.sub(group_name, 7)].other_items
                 if #other_items > 0 then
-                    minetest.chat_send_player(player:get_player_name(), "Item "..item_name.." used for "..group_name..". You can also use "..table.concat(other_items, ", ")..".")
+                    if craft_guide.group_messages[player:get_player_name()][item_name] == nil then
+                        minetest.chat_send_player(player:get_player_name(), "Item "..item_name.." used for "..group_name..". You can also use "..table.concat(other_items, ", ")..".")
+                    end
+                    craft_guide.group_messages[player:get_player_name()][item_name] = true
                 end
             end
         end
