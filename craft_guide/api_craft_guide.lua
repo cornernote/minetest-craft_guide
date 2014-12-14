@@ -219,99 +219,95 @@ craft_guide.update_recipe = function(meta, player, stack, alternate)
 	--craft_guide.log(player:get_player_name().." requests recipe "..alternate.." for "..stack:get_name())
 	local craft = crafts[alternate]
 	
-	-- show me the unknown items
-	--craft_guide.log(dump(craft))
-	--minetest.chat_send_player(player:get_player_name(), "recipe for "..stack:get_name()..": "..dump(craft))
-	
 	local itemstack = ItemStack(craft.output)
 	inv:set_stack("output", 1, itemstack)
 
 	-- cook
 	if craft.type == "cooking" then
-		inv:set_stack("cook", 1, craft_guide.get_item_name(craft.recipe))
+		inv:set_stack("cook", 1, craft_guide.get_item_name(craft.recipe, player))
 		meta:set_string("formspec",craft_guide.get_craft_guide_formspec(meta))
 		return
 	end
 	-- fuel
 	if craft.type == "fuel" then
-		inv:set_stack("fuel", 1, craft_guide.get_item_name(craft.recipe))
+		inv:set_stack("fuel", 1, craft_guide.get_item_name(craft.recipe, player))
 		meta:set_string("formspec",craft_guide.get_craft_guide_formspec(meta))
 		return
 	end
 	-- build (shaped or shapeless)
 	if craft.recipe[1] then
 		if (type(craft.recipe[1]) == "string") then
-			inv:set_stack("build", 1, craft_guide.get_item_name(craft.recipe[1]))
+			inv:set_stack("build", 1, craft_guide.get_item_name(craft.recipe[1], player))
 		else
 			if craft.recipe[1][1] then
-				inv:set_stack("build", 1, craft_guide.get_item_name(craft.recipe[1][1]))
+				inv:set_stack("build", 1, craft_guide.get_item_name(craft.recipe[1][1], player))
 			end
 			if craft.recipe[1][2] then
-				inv:set_stack("build", 2, craft_guide.get_item_name(craft.recipe[1][2]))
+				inv:set_stack("build", 2, craft_guide.get_item_name(craft.recipe[1][2], player))
 			end
 			if craft.recipe[1][3] then
-				inv:set_stack("build", 3, craft_guide.get_item_name(craft.recipe[1][3]))
+				inv:set_stack("build", 3, craft_guide.get_item_name(craft.recipe[1][3], player))
 			end
 		end
 	end
 	if craft.recipe[2] then
 		if (type(craft.recipe[2]) == "string") then
-			inv:set_stack("build", 2, craft_guide.get_item_name(craft.recipe[2]))
+			inv:set_stack("build", 2, craft_guide.get_item_name(craft.recipe[2], player))
 		else
 			if craft.recipe[2][1] then
-				inv:set_stack("build", 4, craft_guide.get_item_name(craft.recipe[2][1]))
+				inv:set_stack("build", 4, craft_guide.get_item_name(craft.recipe[2][1], player))
 			end
 			if craft.recipe[2][2] then
-				inv:set_stack("build", 5, craft_guide.get_item_name(craft.recipe[2][2]))
+				inv:set_stack("build", 5, craft_guide.get_item_name(craft.recipe[2][2], player))
 			end
 			if craft.recipe[2][3] then
-				inv:set_stack("build", 6, craft_guide.get_item_name(craft.recipe[2][3]))
+				inv:set_stack("build", 6, craft_guide.get_item_name(craft.recipe[2][3], player))
 			end
 		end
 	end
 	if craft.recipe[3] then
 		if (type(craft.recipe[3]) == "string") then
-			inv:set_stack("build", 3, craft_guide.get_item_name(craft.recipe[3]))
+			inv:set_stack("build", 3, craft_guide.get_item_name(craft.recipe[3], player))
 		else
 			if craft.recipe[3][1] then
-				inv:set_stack("build", 7, craft_guide.get_item_name(craft.recipe[3][1]))
+				inv:set_stack("build", 7, craft_guide.get_item_name(craft.recipe[3][1], player))
 			end
 			if craft.recipe[3][2] then
-				inv:set_stack("build", 8, craft_guide.get_item_name(craft.recipe[3][2]))
+				inv:set_stack("build", 8, craft_guide.get_item_name(craft.recipe[3][2], player))
 			end
 			if craft.recipe[3][3] then
-				inv:set_stack("build", 9, craft_guide.get_item_name(craft.recipe[3][3]))
+				inv:set_stack("build", 9, craft_guide.get_item_name(craft.recipe[3][3], player))
 			end
 		end
 	end
 	if craft.recipe[4] then
 		if (type(craft.recipe[4]) == "string") then
-			inv:set_stack("build", 4, craft_guide.get_item_name(craft.recipe[4]))
+			inv:set_stack("build", 4, craft_guide.get_item_name(craft.recipe[4], player))
 		end
 	end
 	if craft.recipe[5] then
 		if (type(craft.recipe[5]) == "string") then
-			inv:set_stack("build", 5, craft_guide.get_item_name(craft.recipe[5]))
+			inv:set_stack("build", 5, craft_guide.get_item_name(craft.recipe[5], player))
 		end
 	end
 	if craft.recipe[6] then
 		if (type(craft.recipe[6]) == "string") then
-			inv:set_stack("build", 6, craft_guide.get_item_name(craft.recipe[6]))
+			inv:set_stack("build", 6, craft_guide.get_item_name(craft.recipe[6], player))
 		end
 	end
 	if craft.recipe[7] then
 		if (type(craft.recipe[7]) == "string") then
-			inv:set_stack("build", 7, craft_guide.get_item_name(craft.recipe[7]))
+			inv:set_stack("build", 7, craft_guide.get_item_name(craft.recipe[7], player))
 		end
 	end
 	if craft.recipe[8] then
 		if (type(craft.recipe[8]) == "string") then
-			inv:set_stack("build", 8, craft_guide.get_item_name(craft.recipe[8]))
+			inv:set_stack("build", 8, craft_guide.get_item_name(craft.recipe[8], player))
 		end
 	end
 	if craft.recipe[9] then
 		if (type(craft.recipe[9]) == "string") then
-			inv:set_stack("build", 9, craft_guide.get_item_name(craft.recipe[9]))
+			inv:set_stack("build", 9, craft_guide.get_item_name(craft.recipe[9], player))
 		end
 	end
 	meta:set_string("formspec",craft_guide.get_craft_guide_formspec(meta))
@@ -391,13 +387,21 @@ end
 
 
 -- get an item name, if it's a group then get an item in the group
-craft_guide.get_item_name = function(item_name)
+craft_guide.get_item_name = function(item_name, player)
     if string.find(item_name, "group:") then
-        if #craft_guide.groups == 0 then
+        local group_name = item_name
+        if craft_guide.table_count(craft_guide.groups) == 0 then
             craft_guide.load_item_groups()
         end
-        if craft_guide.groups[string.sub(item_name, 7)] ~= nil then
-            item_name = craft_guide.groups[string.sub(item_name, 7)].item_name
+        if craft_guide.table_count(craft_guide.groups) > 0 then
+            local other_items = {}
+            if craft_guide.groups[string.sub(group_name, 7)] ~= nil then
+                item_name = craft_guide.groups[string.sub(group_name, 7)].item_name
+                other_items = craft_guide.groups[string.sub(group_name, 7)].other_items
+                if #other_items > 0 then
+                    minetest.chat_send_player(player:get_player_name(), "Item "..item_name.." used for "..group_name..". You can also use "..table.concat(other_items, ", ")..".")
+                end
+            end
         end
     end
     return item_name
@@ -408,12 +412,27 @@ end
 craft_guide.load_item_groups = function()
     for name,def in pairs(minetest.registered_items) do
         if name ~= nil and def ~= nil and dump(name) ~= "\"\"" and dump(def) ~= "\"\"" then
+            local i = 1
             for group,_ in pairs(def.groups) do
                 if craft_guide.groups[group] == nil then
                     craft_guide.groups[group] = {}
+                    craft_guide.groups[group].other_items = {}
                     craft_guide.groups[group].item_name = name
+                else
+                    craft_guide.groups[group].other_items[i] = name
+                    i = i+1
                 end
             end
         end
     end
+end
+
+
+-- count items in a table
+craft_guide.table_count = function(count_table)
+    local count = 0;
+    for k,v in pairs(count_table) do
+        count = count + 1
+    end
+    return count
 end
