@@ -21,6 +21,8 @@ craft_guide = {}
 -- define api variables
 craft_guide.crafts = {}
 
+craft_guide.you_need_list = {}
+
 -- here you can disable "you need" feature if you don't want it
 craft_guide.you_need=true
 
@@ -114,11 +116,13 @@ craft_guide.register_craft = function(options)
 	table.insert(craft_guide.crafts[itemstack:get_name()],options)
 end
 
-
 -- get_craft_guide_formspec
 craft_guide.get_craft_guide_formspec = function(meta, search, page, alternate)
 	if search == nil then 
 		search = meta:get_string("search")
+		if search == nil then 
+			search = ""
+		end
 	end
 	if meta:get_string("formspec")=="" then
 		meta:set_string("saved_search","|")
@@ -126,7 +130,7 @@ craft_guide.get_craft_guide_formspec = function(meta, search, page, alternate)
 		meta:set_string("saved_pages","1")
 		meta:set_string("switch","bookmarks")
 		meta:set_string("poslist","down")
-		meta:set_string("amounts","")
+		meta:set_string("globalcount","1")
 	end	
 	if page == nil then 
 		page = craft_guide.get_current_page(meta) 
@@ -144,132 +148,14 @@ craft_guide.get_craft_guide_formspec = function(meta, search, page, alternate)
 	if crafts ~= nil then
 		alternates = #crafts
 	end
-	local build=""
-	for ii=1,9,1 do
-		local build_old=build
-		local build_stack = inv:get_stack("build",ii)
-		if build_stack~=nil then
-			local build_name=build_stack:get_name()
-			if string.sub(build_name,1,6)=="group:" then
-				local groups=string.sub(build_name,7)
-				local saved=""
-				for name,def in pairs(minetest.registered_items) do
-					local hasgroup=1
-					for group in string.gmatch(groups,"([^,]+)") do
-						if minetest.get_item_group(name, group)==0 then
-							hasgroup=0
-						end
-					end
-					if hasgroup==1 then
-                                                --prefer items from default mod
-						if string.sub(name,1,8)=="default:" then
-							build=build.."item_image_button["..tostring(2+((ii-1)%3))..","
-							..tostring(7+math.floor((ii-1)/3))..";1,1;"
-							..name..";t_758s"..tostring(ii)..";group]"
-							.."tooltip[t_758s"..tostring(ii)..";"
-							..string.upper(string.sub(groups,1,1))..string.sub(groups.." ",2).."]"
-
-							saved=""
-							break
-						elseif saved=="" then
-							saved=name
-						end
-					end
-				end
-				if saved~="" then
-					build=build.."item_image_button["..tostring(2+((ii-1)%3))..","
-					..tostring(7+math.floor((ii-1)/3))..";1,1;"..saved..";t_758s"..tostring(ii)..";group]"
-					.."tooltip[t_758s"..tostring(ii)..";"
-					..string.upper(string.sub(groups,1,1))..string.sub(groups.." ",2).."]"
-				end
-			end
-		end
-		if build_old==build then
-			build=build.."list[current_name;build;"..tostring(2+((ii-1)%3))..","..tostring(7+math.floor((ii-1)/3))
-				..";1,1;"..tostring(ii-1).."]"
-		end
-	end
-	local cook=""
-	local cook_stack = inv:get_stack("cook",1)
-	if cook_stack~=nil then
-		local cook_name=cook_stack:get_name()
-		if string.sub(cook_name,1,6)=="group:" then
-			local groups=string.sub(cook_name,7)
-			local saved=""
-			for name,def in pairs(minetest.registered_items) do
-				local hasgroup=1
-				for group in string.gmatch(groups,"([^,]+)") do
-					if minetest.get_item_group(name, group)==0 then
-						hasgroup=0
-					end
-				end
-				if hasgroup==1 then
-					if string.sub(name,1,8)=="default:" then
-						cook="item_image_button[6,7;1,1;"..name..";c_758s1;group]"
-						.."tooltip[c_758s1;"..string.upper(string.sub(groups,1,1))..string.sub(groups.." ",2).."]"
-	
-						saved=""
-						break
-					elseif saved=="" then
-						saved=name
-					end
-				end
-			end
-			if saved~="" then
-				cook="item_image_button[6,7;1,1;"..saved..";c_758s1;group]"
-				.."tooltip[c_758s1;"..string.upper(string.sub(groups,1,1))..string.sub(groups.." ",2).."]"
-			end
-		end
-		if cook=="" then
-			cook="list[current_name;cook;6,7;1,1;]"
-		end
-	end
-
-	local fuel=""
-	local fuel_stack = inv:get_stack("fuel",1)
-	if fuel_stack~=nil then
-		local fuel_name=fuel_stack:get_name()
-		if string.sub(fuel_name,1,6)=="group:" then
-			local groups=string.sub(fuel_name,7)
-			local saved=""
-			for name,def in pairs(minetest.registered_items) do
-				local hasgroup=1
-				for group in string.gmatch(groups,"([^,]+)") do
-					if minetest.get_item_group(name, group)==0 then
-						hasgroup=0
-					end
-				end
-				if hasgroup==1 then
-					if string.sub(name,1,8)=="default:" then
-						fuel="item_image_button[6,9;1,1;"..name..";f_758s1;group]"
-						.."tooltip[f_758s1;"..string.upper(string.sub(groups,1,1))..string.sub(groups.." ",2).."]"
-	
-						saved=""
-						break
-					elseif saved=="" then
-						saved=name
-					end
-				end
-			end
-			if saved~="" then
-				fuel="item_image_button[6,9;1,1;"..saved..";f_758s1;group]"
-				.."tooltip[f_758s1;"..string.upper(string.sub(groups,1,1))..string.sub(groups.." ",2).."]"
-			end
-		end
-		if fuel=="" then
-			fuel="list[current_name;fuel;6,9;1,1;]"
-		end
-	end
-	bk=""
+	backbutton=""
 	if meta:get_string("saved_search")~="|" then
-		bk="button[6,5.8;2.7,1;back_button;<--- Back]"
+		backbutton="button[6,5.8;2.7,1;back_button;<--- Back]"
 	end
-
 	local changeable_part=""
 	if meta:get_string("switch")=="youneed" and craft_guide.you_need then
 		changeable_part="button[9.7,6.35;0.8,0.7;switch_to_bookmarks;>>]"
 				.."tooltip[switch_to_bookmarks;Show your saved bookmarks]"
-
 		if meta:get_string("poslist")=="down" then
 			changeable_part= changeable_part.."label[8,6.5;You need:]"
 				.."button[10.42,6.35;0.5,0.7;move_up;^]"
@@ -278,67 +164,15 @@ craft_guide.get_craft_guide_formspec = function(meta, search, page, alternate)
 				.."label[11.2,6.35;bookmarks]"
 				.."label[12.6,6.05;->]"
 				.."list[current_name;add;13,6;1,1;]"
+				..craft_guide.build_button_list(meta,inv,"youneed",12,29,8,7,6)
+
 		else
 			changeable_part= changeable_part.."button[10.42,6.35;0.5,0.7;move_down;v]"
 				.."tooltip[move_down;Move the list of needed items downwards]"
+				..craft_guide.build_button_list(meta,inv,"youneed",12,29,0,1,14,0)
 		end
+		changeable_part= changeable_part..craft_guide.get_amounts(meta,inv,"youneed")
 
-		local itemlist=""
-		local x=8
-		local y=7
-		local widht=6
-		if meta:get_string("switch")=="youneed" and meta:get_string("poslist")=="up" then
-			x=0
-			y=1
-			widht=14
-		end
-		for ii=1,18,1 do
-			local itemlist_old=itemlist
-			local itemlist_stack = inv:get_stack("youneed",ii)
-			if itemlist_stack~=nil then
-				local itemlist_name=itemlist_stack:get_name()
-				if string.sub(itemlist_name,1,6)=="group:" then
-					local groups=string.sub(itemlist_name,7)
-					local saved=""
-					for name,def in pairs(minetest.registered_items) do
-						local hasgroup=1
-						for group in string.gmatch(groups,"([^,]+)") do
-							if minetest.get_item_group(name, group)==0 then
-								hasgroup=0
-							end
-						end
-						if hasgroup==1 then
-        	                                        --prefer items from default mod
-							if string.sub(name,1,8)=="default:" then
-								itemlist=itemlist.."item_image_button["..tostring(x+((ii-1)%widht))..","
-								..tostring(y+math.floor((ii-1)/widht))..";1,1;"
-								..name..";u_758s"..tostring(ii)..";group]"
-								.."tooltip[u_758s"..tostring(ii)..";"
-								..string.upper(string.sub(groups,1,1))..string.sub(groups.." ",2).."]"
-	
-								saved=""
-								break
-							elseif saved=="" then
-								saved=name
-							end
-						end
-					end
-					if saved~="" then
-						itemlist=itemlist.."item_image_button["..tostring(x+((ii-1)%widht))..","
-						..tostring(y+math.floor((ii-1)/widht))..";1,1;"..saved..";u_758s"..tostring(ii)..";group]"
-						.."tooltip[u_758s"..tostring(ii)..";"..string.upper(string.sub(groups,1,1))..string.sub(groups.." ",2).."]"
-					end
-				end
-			end
-			if itemlist_old==itemlist
-				and (meta:get_string("poslist")=="down"
-				or (inv:get_stack("youneed",ii)~= nil and inv:get_stack("youneed",ii):get_name()~=""))
-				then
-				itemlist=itemlist.."list[current_name;youneed;"..tostring(x+((ii-1)%widht))..","
-					..tostring(y+math.floor((ii-1)/widht))..";1,1;"..tostring(ii-1).."]"
-			end
-		end
-		changeable_part= changeable_part..itemlist..meta:get_string("amounts")
 	end
  	if meta:get_string("switch")=="bookmarks" or (not craft_guide.you_need) or meta:get_string("poslist")=="up" then
 
@@ -365,8 +199,7 @@ craft_guide.get_craft_guide_formspec = function(meta, search, page, alternate)
 
 		.."field[6,5.4;2,1;craft_guide_search_box;;"..tostring(search).."]"
 		.."button[7.5,5.1;1.2,1;craft_guide_search_button;Search]"
-		..bk
-
+		..backbutton
 		.."label[9,5.2;page "..tostring(page).." of "..tostring(pages).."]"
 		.."button[11,5;1.5,1;craft_guide_prev;<<]"
 		.."button[12.5,5;1.5,1;craft_guide_next;>>]"
@@ -375,11 +208,11 @@ craft_guide.get_craft_guide_formspec = function(meta, search, page, alternate)
 		.."list[current_name;output;0,7;1,1;]"
 
 		.."label[2,6.5;Inventory Craft]"
-		..build
+		..craft_guide.build_button_list(meta,inv,"build",3,11,2,7,3)
 		.."label[6,6.5;Cook]"
-		..cook
+		..craft_guide.build_button_list(meta,inv,"cook",1,1,6,7,1)
 		.."label[6,8.5;Fuel]"
-		..fuel
+		..craft_guide.build_button_list(meta,inv,"fuel",2,2,6,9,1)
 		..changeable_part
 		.."button_exit[0,9.2;1,0.8;close_mm;ESC]"
 
@@ -406,8 +239,6 @@ craft_guide.on_construct = function(pos)
 	inv:set_size("fuel", 1)
 	inv:set_size("bookmark", 6*3)
 	inv:set_size("youneed", 6*15)
-	inv:set_size("trylist", 6*10)
-	inv:set_size("overflow", 6*6)
 	inv:set_size("bin", 1)
 	inv:set_size("add", 1)
 	craft_guide.create_inventory(inv)
@@ -447,7 +278,6 @@ craft_guide.on_receive_fields = function(pos, formname, fields, player)
 	if fields.craft_guide_search_button then
 		if meta:get_string("switch")=="youneed" and meta:get_string("poslist")=="up" then
 			meta:set_string("switch","bookmarks")
-			craft_guide.update_recipe(meta, player, stack, alternate)
 		end		
 		meta:set_string("saved_search", "|")
 		page = 1
@@ -461,7 +291,6 @@ craft_guide.on_receive_fields = function(pos, formname, fields, player)
 		end
 		if meta:get_string("switch")=="youneed" and meta:get_string("poslist")=="up" then
 			meta:set_string("switch","bookmarks")
-			craft_guide.update_recipe(meta, player, stack, alternate)
 		end
 	end
 
@@ -472,22 +301,21 @@ craft_guide.on_receive_fields = function(pos, formname, fields, player)
 		end
 		if meta:get_string("switch")=="youneed" and meta:get_string("poslist")=="up" then
 			meta:set_string("switch","bookmarks")
-			craft_guide.update_recipe(meta, player, stack, alternate)
 		end
+	end
+
+	if page > pages then
+		page = pages
 	end
 
 	if page < 1 then
 		page = 1
-	end
-	if page > pages then
-		page = pages
 	end
 
 	-- go back to search result
 	if fields.back_button then
 		if meta:get_string("switch")=="youneed" and meta:get_string("poslist")=="up" then
 			meta:set_string("switch","bookmarks")
-			craft_guide.update_recipe(meta, player, stack, alternate)
 		end		
 		local saved_search = meta:get_string("saved_search")
 		if saved_search~="|" then
@@ -514,14 +342,12 @@ craft_guide.on_receive_fields = function(pos, formname, fields, player)
 	if fields.move_up then	
 		if meta:get_string("switch")=="youneed" then
 			meta:set_string("poslist","up")
-			craft_guide.update_recipe(meta, player, stack, alternate)
 		end
 	end
 
 	if fields.move_down then	
 		if meta:get_string("switch")=="youneed" then
 			meta:set_string("poslist","down")
-			craft_guide.update_recipe(meta, player, stack, alternate)
 		end
 	end
 
@@ -535,450 +361,27 @@ craft_guide.on_receive_fields = function(pos, formname, fields, player)
 		alternate = 1
 	end
 
-	--group buttons
-
-	--button in cook list
+	--group buttons, finally a solution with a for loop
 	local starts=""
 	local ends=""
 	local xx=""
 	local formspec = meta:get_string("formspec")
-	if fields.c_758s1 then 
-		xx,starts=string.find(formspec,"tooltip%[c_758s1;")
-		if starts~=nil then
-			ends,xx=string.find(formspec,"%]",starts+1)
-			local group=string.lower(string.sub(formspec,starts+1,ends-2))
-			meta:set_string("search", "group:"..group)
-			if meta:get_string("saved_search")=="|" then
-				meta:set_string("saved_search", search)
-				meta:set_string("saved_page", tostring(page))
-				meta:set_string("saved_pages", tostring(pages))
+	for button_number=1,29,1 do
+		if fields[("t_758s"..tostring(button_number))] then 
+			xx,starts=string.find(formspec,"tooltip%[t_758s"..tostring(button_number)..";")
+			if starts~=nil then
+				ends,xx=string.find(formspec,"%]",starts+1)
+				local group=string.lower(string.sub(formspec,starts+1,ends-2))
+				meta:set_string("search", "group:"..group)
+				if meta:get_string("saved_search")=="|" then
+					meta:set_string("saved_search", search)
+					meta:set_string("saved_page", tostring(page))
+					meta:set_string("saved_pages", tostring(pages))
+				end
+				page = 1
+				search="group:"..group
 			end
-			page = 1
-			search="group:"..group
-		end
-	end
-	--button in fuel list
-	if fields.f_758s1 then 
-		xx,starts=string.find(formspec,"tooltip%[f_758s1;")
-		if starts~=nil then
-			ends,xx=string.find(formspec,"%]",starts+1)
-			local group=string.lower(string.sub(formspec,starts+1,ends-2))
-			meta:set_string("search", "group:"..group)
-			if meta:get_string("saved_search")=="|" then
-				meta:set_string("saved_search", search)
-				meta:set_string("saved_page", tostring(page))
-				meta:set_string("saved_pages", tostring(pages))
-			end
-			page = 1
-			search="group:"..group
-		end
-	end
-	--buttons in Inventory Craft
-	if fields.t_758s1 then 
-		xx,starts=string.find(formspec,"tooltip%[t_758s1;")
-		if starts~=nil then
-			ends,xx=string.find(formspec,"%]",starts+1)
-			local group=string.lower(string.sub(formspec,starts+1,ends-2))
-			meta:set_string("search", "group:"..group)
-			if meta:get_string("saved_search")=="|" then
-				meta:set_string("saved_search", search)
-				meta:set_string("saved_page", tostring(page))
-				meta:set_string("saved_pages", tostring(pages))
-			end
-			page = 1
-			search="group:"..group
-		end
-	end
-	if fields.t_758s2 then 
-		xx,starts=string.find(formspec,"tooltip%[t_758s2;")
-		if starts~=nil then
-			ends,xx=string.find(formspec,"%]",starts+1)
-			local group=string.lower(string.sub(formspec,starts+1,ends-2))
-			meta:set_string("search", "group:"..group)
-			if meta:get_string("saved_search")=="|" then
-				meta:set_string("saved_search", search)
-				meta:set_string("saved_page", tostring(page))
-				meta:set_string("saved_pages", tostring(pages))
-			end
-			page = 1
-			search="group:"..group
-		end
-	end
-	if fields.t_758s3 then 
-		xx,starts=string.find(formspec,"tooltip%[t_758s3;")
-		if starts~=nil then
-			ends,xx=string.find(formspec,"%]",starts+1)
-			local group=string.lower(string.sub(formspec,starts+1,ends-2))
-			meta:set_string("search", "group:"..group)
-			if meta:get_string("saved_search")=="|" then
-				meta:set_string("saved_search", search)
-				meta:set_string("saved_page", tostring(page))
-				meta:set_string("saved_pages", tostring(pages))
-			end
-			page = 1
-			search="group:"..group
-		end
-	end
-	if fields.t_758s4 then 
-		xx,starts=string.find(formspec,"tooltip%[t_758s4;")
-		if starts~=nil then
-			ends,xx=string.find(formspec,"%]",starts+1)
-			local group=string.lower(string.sub(formspec,starts+1,ends-2))
-			meta:set_string("search", "group:"..group)
-			if meta:get_string("saved_search")=="|" then
-				meta:set_string("saved_search", search)
-				meta:set_string("saved_page", tostring(page))
-				meta:set_string("saved_pages", tostring(pages))
-			end
-			page = 1
-			search="group:"..group
-		end
-	end
-	if fields.t_758s5 then 
-		xx,starts=string.find(formspec,"tooltip%[t_758s5;")
-		if starts~=nil then
-			ends,xx=string.find(formspec,"%]",starts+1)
-			local group=string.lower(string.sub(formspec,starts+1,ends-2))
-			meta:set_string("search", "group:"..group)
-			if meta:get_string("saved_search")=="|" then
-				meta:set_string("saved_search", search)
-				meta:set_string("saved_page", tostring(page))
-				meta:set_string("saved_pages", tostring(pages))
-			end
-			page = 1
-			search="group:"..group
-		end
-	end
-	if fields.t_758s6 then 
-		xx,starts=string.find(formspec,"tooltip%[t_758s6;")
-		if starts~=nil then
-			ends,xx=string.find(formspec,"%]",starts+1)
-			local group=string.lower(string.sub(formspec,starts+1,ends-2))
-			meta:set_string("search", "group:"..group)
-			if meta:get_string("saved_search")=="|" then
-				meta:set_string("saved_search", search)
-				meta:set_string("saved_page", tostring(page))
-				meta:set_string("saved_pages", tostring(pages))
-			end
-			page = 1
-			search="group:"..group
-		end
-	end
-	if fields.t_758s7 then 
-		xx,starts=string.find(formspec,"tooltip%[t_758s7;")
-		if starts~=nil then
-			ends,xx=string.find(formspec,"%]",starts+1)
-			local group=string.lower(string.sub(formspec,starts+1,ends-2))
-			meta:set_string("search", "group:"..group)
-			if meta:get_string("saved_search")=="|" then
-				meta:set_string("saved_search", search)
-				meta:set_string("saved_page", tostring(page))
-				meta:set_string("saved_pages", tostring(pages))
-			end
-			page = 1
-			search="group:"..group
-		end
-	end
-	if fields.t_758s8 then 
-		xx,starts=string.find(formspec,"tooltip%[t_758s8;")
-		if starts~=nil then
-			ends,xx=string.find(formspec,"%]",starts+1)
-			local group=string.lower(string.sub(formspec,starts+1,ends-2))
-			meta:set_string("search", "group:"..group)
-			if meta:get_string("saved_search")=="|" then
-				meta:set_string("saved_search", search)
-				meta:set_string("saved_page", tostring(page))
-				meta:set_string("saved_pages", tostring(pages))
-			end
-			page = 1
-			search="group:"..group
-		end
-	end
-	if fields.t_758s9 then 
-		xx,starts=string.find(formspec,"tooltip%[t_758s9;")
-		if starts~=nil then
-			ends,xx=string.find(formspec,"%]",starts+1)
-			local group=string.lower(string.sub(formspec,starts+1,ends-2))
-			meta:set_string("search", "group:"..group)
-			if meta:get_string("saved_search")=="|" then
-				meta:set_string("saved_search", search)
-				meta:set_string("saved_page", tostring(page))
-				meta:set_string("saved_pages", tostring(pages))
-			end
-			page = 1
-			search="group:"..group
-		end
-	end
-
-	--buttons in You Need
-	if fields.u_758s1 then 
-		xx,starts=string.find(formspec,"tooltip%[u_758s1;")
-		if starts~=nil then
-			ends,xx=string.find(formspec,"%]",starts+1)
-			local group=string.lower(string.sub(formspec,starts+1,ends-2))
-			meta:set_string("search", "group:"..group)
-			if meta:get_string("saved_search")=="|" then
-				meta:set_string("saved_search", search)
-				meta:set_string("saved_page", tostring(page))
-				meta:set_string("saved_pages", tostring(pages))
-			end
-			page = 1
-			search="group:"..group
-		end
-	end
-	if fields.u_758s2 then 
-		xx,starts=string.find(formspec,"tooltip%[u_758s2;")
-		if starts~=nil then
-			ends,xx=string.find(formspec,"%]",starts+1)
-			local group=string.lower(string.sub(formspec,starts+1,ends-2))
-			meta:set_string("search", "group:"..group)
-			if meta:get_string("saved_search")=="|" then
-				meta:set_string("saved_search", search)
-				meta:set_string("saved_page", tostring(page))
-				meta:set_string("saved_pages", tostring(pages))
-			end
-			page = 1
-			search="group:"..group
-		end
-	end
-	if fields.u_758s3 then 
-		xx,starts=string.find(formspec,"tooltip%[u_758s3;")
-		if starts~=nil then
-			ends,xx=string.find(formspec,"%]",starts+1)
-			local group=string.lower(string.sub(formspec,starts+1,ends-2))
-			meta:set_string("search", "group:"..group)
-			if meta:get_string("saved_search")=="|" then
-				meta:set_string("saved_search", search)
-				meta:set_string("saved_page", tostring(page))
-				meta:set_string("saved_pages", tostring(pages))
-			end
-			page = 1
-			search="group:"..group
-		end
-	end
-	if fields.u_758s4 then 
-		xx,starts=string.find(formspec,"tooltip%[u_758s4;")
-		if starts~=nil then
-			ends,xx=string.find(formspec,"%]",starts+1)
-			local group=string.lower(string.sub(formspec,starts+1,ends-2))
-			meta:set_string("search", "group:"..group)
-			if meta:get_string("saved_search")=="|" then
-				meta:set_string("saved_search", search)
-				meta:set_string("saved_page", tostring(page))
-				meta:set_string("saved_pages", tostring(pages))
-			end
-			page = 1
-			search="group:"..group
-		end
-	end
-	if fields.u_758s5 then 
-		xx,starts=string.find(formspec,"tooltip%[u_758s5;")
-		if starts~=nil then
-			ends,xx=string.find(formspec,"%]",starts+1)
-			local group=string.lower(string.sub(formspec,starts+1,ends-2))
-			meta:set_string("search", "group:"..group)
-			if meta:get_string("saved_search")=="|" then
-				meta:set_string("saved_search", search)
-				meta:set_string("saved_page", tostring(page))
-				meta:set_string("saved_pages", tostring(pages))
-			end
-			page = 1
-			search="group:"..group
-		end
-	end
-	if fields.u_758s6 then 
-		xx,starts=string.find(formspec,"tooltip%[u_758s6;")
-		if starts~=nil then
-			ends,xx=string.find(formspec,"%]",starts+1)
-			local group=string.lower(string.sub(formspec,starts+1,ends-2))
-			meta:set_string("search", "group:"..group)
-			if meta:get_string("saved_search")=="|" then
-				meta:set_string("saved_search", search)
-				meta:set_string("saved_page", tostring(page))
-				meta:set_string("saved_pages", tostring(pages))
-			end
-			page = 1
-			search="group:"..group
-		end
-	end
-	if fields.u_758s7 then 
-		xx,starts=string.find(formspec,"tooltip%[u_758s7;")
-		if starts~=nil then
-			ends,xx=string.find(formspec,"%]",starts+1)
-			local group=string.lower(string.sub(formspec,starts+1,ends-2))
-			meta:set_string("search", "group:"..group)
-			if meta:get_string("saved_search")=="|" then
-				meta:set_string("saved_search", search)
-				meta:set_string("saved_page", tostring(page))
-				meta:set_string("saved_pages", tostring(pages))
-			end
-			page = 1
-			search="group:"..group
-		end
-	end
-	if fields.u_758s8 then 
-		xx,starts=string.find(formspec,"tooltip%[u_758s8;")
-		if starts~=nil then
-			ends,xx=string.find(formspec,"%]",starts+1)
-			local group=string.lower(string.sub(formspec,starts+1,ends-2))
-			meta:set_string("search", "group:"..group)
-			if meta:get_string("saved_search")=="|" then
-				meta:set_string("saved_search", search)
-				meta:set_string("saved_page", tostring(page))
-				meta:set_string("saved_pages", tostring(pages))
-			end
-			page = 1
-			search="group:"..group
-		end
-	end
-	if fields.u_758s9 then 
-		xx,starts=string.find(formspec,"tooltip%[u_758s9;")
-		if starts~=nil then
-			ends,xx=string.find(formspec,"%]",starts+1)
-			local group=string.lower(string.sub(formspec,starts+1,ends-2))
-			meta:set_string("search", "group:"..group)
-			if meta:get_string("saved_search")=="|" then
-				meta:set_string("saved_search", search)
-				meta:set_string("saved_page", tostring(page))
-				meta:set_string("saved_pages", tostring(pages))
-			end
-			page = 1
-			search="group:"..group
-		end
-	end
-	if fields.u_758s11 then 
-		xx,starts=string.find(formspec,"tooltip%[u_758s11;")
-		if starts~=nil then
-			ends,xx=string.find(formspec,"%]",starts+1)
-			local group=string.lower(string.sub(formspec,starts+1,ends-2))
-			meta:set_string("search", "group:"..group)
-			if meta:get_string("saved_search")=="|" then
-				meta:set_string("saved_search", search)
-				meta:set_string("saved_page", tostring(page))
-				meta:set_string("saved_pages", tostring(pages))
-			end
-			page = 1
-			search="group:"..group
-		end
-	end
-	if fields.u_758s12 then 
-		xx,starts=string.find(formspec,"tooltip%[u_758s12;")
-		if starts~=nil then
-			ends,xx=string.find(formspec,"%]",starts+1)
-			local group=string.lower(string.sub(formspec,starts+1,ends-2))
-			meta:set_string("search", "group:"..group)
-			if meta:get_string("saved_search")=="|" then
-				meta:set_string("saved_search", search)
-				meta:set_string("saved_page", tostring(page))
-				meta:set_string("saved_pages", tostring(pages))
-			end
-			page = 1
-			search="group:"..group
-		end
-	end
-	if fields.u_758s13 then 
-		xx,starts=string.find(formspec,"tooltip%[u_758s13;")
-		if starts~=nil then
-			ends,xx=string.find(formspec,"%]",starts+1)
-			local group=string.lower(string.sub(formspec,starts+1,ends-2))
-			meta:set_string("search", "group:"..group)
-			if meta:get_string("saved_search")=="|" then
-				meta:set_string("saved_search", search)
-				meta:set_string("saved_page", tostring(page))
-				meta:set_string("saved_pages", tostring(pages))
-			end
-			page = 1
-			search="group:"..group
-		end
-	end
-	if fields.u_758s14 then 
-		xx,starts=string.find(formspec,"tooltip%[u_758s14;")
-		if starts~=nil then
-			ends,xx=string.find(formspec,"%]",starts+1)
-			local group=string.lower(string.sub(formspec,starts+1,ends-2))
-			meta:set_string("search", "group:"..group)
-			if meta:get_string("saved_search")=="|" then
-				meta:set_string("saved_search", search)
-				meta:set_string("saved_page", tostring(page))
-				meta:set_string("saved_pages", tostring(pages))
-			end
-			page = 1
-			search="group:"..group
-		end
-	end
-	if fields.u_758s15 then 
-		xx,starts=string.find(formspec,"tooltip%[u_758s15;")
-		if starts~=nil then
-			ends,xx=string.find(formspec,"%]",starts+1)
-			local group=string.lower(string.sub(formspec,starts+1,ends-2))
-			meta:set_string("search", "group:"..group)
-			if meta:get_string("saved_search")=="|" then
-				meta:set_string("saved_search", search)
-				meta:set_string("saved_page", tostring(page))
-				meta:set_string("saved_pages", tostring(pages))
-			end
-			page = 1
-			search="group:"..group
-		end
-	end
-	if fields.u_758s16 then 
-		xx,starts=string.find(formspec,"tooltip%[u_758s16;")
-		if starts~=nil then
-			ends,xx=string.find(formspec,"%]",starts+1)
-			local group=string.lower(string.sub(formspec,starts+1,ends-2))
-			meta:set_string("search", "group:"..group)
-			if meta:get_string("saved_search")=="|" then
-				meta:set_string("saved_search", search)
-				meta:set_string("saved_page", tostring(page))
-				meta:set_string("saved_pages", tostring(pages))
-			end
-			page = 1
-			search="group:"..group
-		end
-	end
-	if fields.u_758s17 then 
-		xx,starts=string.find(formspec,"tooltip%[u_758s17;")
-		if starts~=nil then
-			ends,xx=string.find(formspec,"%]",starts+1)
-			local group=string.lower(string.sub(formspec,starts+1,ends-2))
-			meta:set_string("search", "group:"..group)
-			if meta:get_string("saved_search")=="|" then
-				meta:set_string("saved_search", search)
-				meta:set_string("saved_page", tostring(page))
-				meta:set_string("saved_pages", tostring(pages))
-			end
-			page = 1
-			search="group:"..group
-		end
-	end
-	if fields.u_758s18 then 
-		xx,starts=string.find(formspec,"tooltip%[u_758s18;")
-		if starts~=nil then
-			ends,xx=string.find(formspec,"%]",starts+1)
-			local group=string.lower(string.sub(formspec,starts+1,ends-2))
-			meta:set_string("search", "group:"..group)
-			if meta:get_string("saved_search")=="|" then
-				meta:set_string("saved_search", search)
-				meta:set_string("saved_page", tostring(page))
-				meta:set_string("saved_pages", tostring(pages))
-			end
-			page = 1
-			search="group:"..group
-		end
-	end
-	if fields.u_758s10 then 
-		xx,starts=string.find(formspec,"tooltip%[u_758s10;")
-		if starts~=nil then
-			ends,xx=string.find(formspec,"%]",starts+1)
-			local group=string.lower(string.sub(formspec,starts+1,ends-2))
-			meta:set_string("search", "group:"..group)
-			if meta:get_string("saved_search")=="|" then
-				meta:set_string("saved_search", search)
-				meta:set_string("saved_page", tostring(page))
-				meta:set_string("saved_pages", tostring(pages))
-			end
-			page = 1
-			search="group:"..group
+		break
 		end
 	end
 	if starts~="" and meta:get_string("switch")=="youneed" and meta:get_string("poslist")=="up" then --button pressed, need to move back to bookmarks
@@ -987,6 +390,101 @@ craft_guide.on_receive_fields = function(pos, formname, fields, player)
 	-- update the formspec
 	craft_guide.create_inventory(inv, search)
 	meta:set_string("formspec",craft_guide.get_craft_guide_formspec(meta, search, page, alternate))
+end
+
+
+-- returns formspec string of a inventory list with buttons for group items
+craft_guide.build_button_list = function(meta,inv,list,start_index,end_index,x,y,w,show_empty)
+	if show_empty~=0 then
+		show_empty=1
+	end
+	local string=""
+	for i=1,end_index-start_index+1,1 do
+		local string_old=string
+		local stack = inv:get_stack(list,i)
+		if stack~=nil then
+			local name=stack:get_name()
+			if string.sub(name,1,6)=="group:" then
+				local groups=string.sub(name,7)
+				local saved=""
+				for name,def in pairs(minetest.registered_items) do
+					local hasgroup=1
+					for group in string.gmatch(groups,"([^,]+)") do
+						if minetest.get_item_group(name, group)==0 then
+							hasgroup=0
+						end
+					end
+					if hasgroup==1 then
+                                                --prefer items from default mod
+						if string.sub(name,1,8)=="default:" then
+							string=string.."item_image_button["..tostring(x+((i-1)%w))..","
+							..tostring(y+math.floor((i-1)/w))..";1,1;"
+							..name..";t_758s"..tostring(i+start_index-1)..";group]"
+							.."tooltip[t_758s"..tostring(i+start_index-1)..";"
+							..string.upper(string.sub(groups,1,1))..string.sub(groups.." ",2).."]"
+
+							saved=""
+							break
+						elseif saved=="" then
+							saved=name
+						end
+					end
+				end
+				if saved~="" then
+					string=string.."item_image_button["..tostring(x+((i-1)%w))..","
+					..tostring(y+math.floor((i-1)/w))..";1,1;"..saved..";t_758s"..tostring(i+start_index-1)..";group]"
+					.."tooltip[t_758s"..tostring(i+start_index-1)..";"
+					..string.upper(string.sub(groups,1,1))..string.sub(groups.." ",2).."]"
+				end
+			end
+		end
+		if string_old==string and ((stack~=nil and stack:get_name()~="") or show_empty==1) then
+			string=string.."list[current_name;"..list..";"..tostring(x+((i-1)%w))..","..tostring(y+math.floor((i-1)/w))
+				..";1,1;"..tostring(i-1).."]"
+		end
+	end
+	return string
+end
+
+
+-- returns a formspec string with item amounts
+craft_guide.get_amounts = function(meta,inv,list)
+	local amounts=""
+	local xx=8.1
+	local yy=7.45
+	local w=6
+	local size=18
+	if meta:get_string("poslist")=="up" then
+		xx=0.1
+		yy=1.45
+		w=14
+		size=70
+	end
+	for jj=1,size,1 do
+		local item=string.lower(inv:get_stack(list,jj):get_name())
+		local cnt=1
+		if item==nil or item=="" then
+			break
+		end
+		local count=craft_guide.you_need_list[item]
+		if count~=nil then
+			cnt=math.floor(((count)/tonumber(meta:get_string("globalcount")))*1000+0.49)/1000
+			if cnt>1000 then
+				cnt=math.floor(cnt+0.49)
+			elseif cnt>100 then
+				cnt=math.floor(cnt*10+0.49)/10
+			elseif cnt>10 then
+				cnt=math.floor(cnt*100+0.49)/100
+			end
+			amounts=amounts.."label["..tostring(xx+((jj-1)%w))..","..tostring(yy+math.floor((jj-1)/w))..";"..tostring(cnt).."]"
+		end
+		jj=jj+1
+		if jj > size then
+			break
+		end
+
+	end
+	return amounts
 end
 
 
@@ -1010,11 +508,11 @@ end
 
 -- update_recipe
 craft_guide.update_recipe = function(meta, player, stack, alternate)
-	meta:set_string("amounts","")
-	local count={}
 	local globalcount=1
-	local m="tq7k" --random modifier to turn unstackable items in stackable items
-
+	local list={}
+	local list2={}
+	local test={}
+	local forlist={}
 	local inv = meta:get_inventory()
 	if meta:get_string("out")~="" then
 		inv:set_stack("output", 1, ItemStack(meta:get_string("out")))
@@ -1025,12 +523,6 @@ craft_guide.update_recipe = function(meta, player, stack, alternate)
 	end
 	for i=0,inv:get_size("youneed"),1 do
 		inv:set_stack("youneed", i, nil)
-	end
-	for i=0,inv:get_size("trylist"),1 do
-		inv:set_stack("trylist", i, nil)
-	end
-	for i=0,inv:get_size("overflow"),1 do
-		inv:set_stack("overflow", i, nil)
 	end
 
 	inv:set_stack("cook", 1, nil)
@@ -1154,18 +646,21 @@ craft_guide.update_recipe = function(meta, player, stack, alternate)
 		end
 	end
 	if meta:get_string("switch")=="youneed" and craft_guide.you_need then
-		count[1]=1
-		inv:set_stack("youneed", 1,ItemStack(stack:get_name()))
-		for j=1,5,1 do
+		craft_guide.you_need_list=nil
+		craft_guide.you_need_list={}
+		list[stack:get_name()] = {}
+		list[stack:get_name()] = 1
+		for j=1,10,1 do	--main iteration loop
 			local finished=1
 			local limit=inv:get_size("youneed")
-			for k=1,limit,1 do
-				local name=string.lower(inv:get_stack("youneed", k):get_name())
-				if string.len(name)>4 and string.sub(name,string.len(name)-3)==m then
-					name=string.sub(name,1,string.len(name)-4)
+			local k=0
+			for name,count in pairs(list) do
+				if k>limit then
+					break
 				end
+				k=k+1
 				local isbase=0
-				if name==nil or name=="" or string.sub(name,1,6)=="group:" then
+				if name==nil or name=="" or count==0 or string.sub(name,1,6)=="group:" then
 					isbase=1
 				elseif j>1 or k>1 then
 					for ii=1,999,1 do
@@ -1221,256 +716,257 @@ craft_guide.update_recipe = function(meta, player, stack, alternate)
 								craftnumber=#crafts+1
 							end
 							local index=craftnumber
-							local list="trylist"
 							if j>1 then
 								if #crafts==1 and index<=#crafts then 
 									bestvalue=0
 									istest=0
-									list="youneed"
 								elseif index>#crafts or bestvalue==0 then
 									index=bestcraft
 									bestvalue=0
 									istest=0
-									list="youneed"
 								end
 							else
 								bestvalue=0
 								index=alternate
 								istest=0
-								list="youneed"
 							end
 							local craft = crafts[index]
 							if craft~=nil and craft.type~="fuel" then
-								local amount=count[k]
+								local amount=count
 								if istest==0 then
-									inv:set_stack("youneed", k,nil)
-									count[k]=0
+									list[name]=0
 									local output_count=ItemStack(craft.output):get_count()
 									if output_count~=1 and (j>1 or k>1) then
 										if amount/output_count==math.floor(amount/output_count) then
 											amount=amount/output_count
 										else
 											globalcount=globalcount*output_count
-											for ii=1,100,1 do
-												if count[ii]==nil then
-													ii=111
-												else
-													count[ii]=count[ii]*output_count
+											for _name,_amount in pairs(list) do
+												if tonumber(amount)>0 then
+													list[_name]=tonumber(_amount)*output_count
 												end
 											end
 										end
 									end
 								end
-								if(amount>50) then
-									amount=math.floor(amount/50+0.49)
-									if list=="youneed" then
-										list="overflow"
-									end
+								if istest==1 then
+									list2=list
+									list=nil
+									list={}
+									list=test
 								end
 								if craft.type == "cooking" then
-									for ci=1,amount,1 do
-										inv:add_item(list,ItemStack(craft.recipe))
+									if list[craft.recipe]==nil then
+										list[(craft.recipe)]={}
+										list[(craft.recipe)]=amount
+									else
+										local add=amount+tonumber(list[(craft.recipe)])
+										list[(craft.recipe)]=add
 									end
 								else
 									if craft.recipe[1] then
 										if (type(craft.recipe[1]) == "string") then
-											local item=ItemStack(craft.recipe[1])
-											if item:get_stack_max()<10 then
-												item=ItemStack(item:get_name()..m)
-											end
-											for ci=1,amount,1 do
-												inv:add_item(list,item)
+											if list[craft.recipe[1]]==nil then
+												list[(craft.recipe[1])]={}
+												list[(craft.recipe[1])]=amount
+											else
+												local add =amount+tonumber(list[(craft.recipe[1])])
+												list[(craft.recipe[1])]=add
 											end
 										else
 											if craft.recipe[1][1] then
-												local item=ItemStack(craft.recipe[1][1])
-												if item:get_stack_max()<10 then
-													item=ItemStack(item:get_name()..m)
-												end
-												for ci=1,amount,1 do
-													inv:add_item(list,item)
+												if list[(craft.recipe[1][1])]==nil then
+													list[(craft.recipe[1][1])]={}
+													list[(craft.recipe[1][1])]=amount
+												else
+													local add =amount+tonumber(list[(craft.recipe[1][1])])
+													list[(craft.recipe[1][1])]=add
 												end
 											end
 											if craft.recipe[1][2] then
-												local item=ItemStack(craft.recipe[1][2])
-												if item:get_stack_max()<10 then
-													item=ItemStack(item:get_name()..m)
-												end
-												for ci=1,amount,1 do
-													inv:add_item(list,item)
+												if list[(craft.recipe[1][2])]==nil then
+													list[(craft.recipe[1][2])]={}
+													list[(craft.recipe[1][2])]=amount
+												else
+													local add =amount+tonumber(list[(craft.recipe[1][2])])
+													list[(craft.recipe[1][2])]=add
 												end
 											end
 											if craft.recipe[1][3] then
-												local item=ItemStack(craft.recipe[1][3])
-												if item:get_stack_max()<10 then
-													item=ItemStack(item:get_name()..m)
-												end
-												for ci=1,amount,1 do
-													inv:add_item(list,item)
+												if list[(craft.recipe[1][3])]==nil then
+													list[(craft.recipe[1][3])]={}
+													list[(craft.recipe[1][3])]=amount
+												else
+													local add =amount+tonumber(list[(craft.recipe[1][3])])
+													list[(craft.recipe[1][3])]=add
 												end
 											end
 										end
 									end
 									if craft.recipe[2] then
 										if (type(craft.recipe[2]) == "string") then
-											local item=ItemStack(craft.recipe[2])
-											if item:get_stack_max()<10 then
-												item=ItemStack(item:get_name()..m)
-											end
-											for ci=1,amount,1 do
-												inv:add_item(list,item)
+											if list[(craft.recipe[2])]==nil then
+												list[(craft.recipe[2])]={}
+												list[(craft.recipe[2])]=amount
+											else
+												local add =amount+tonumber(list[(craft.recipe[2])])
+												list[(craft.recipe[2])]=add
 											end
 										else
 											if craft.recipe[2][1] then
-												local item=ItemStack(craft.recipe[2][1])
-												if item:get_stack_max()<10 then
-													item=ItemStack(item:get_name()..m)
-												end
-												for ci=1,amount,1 do
-													inv:add_item(list,item)
+												if list[(craft.recipe[2][1])]==nil then
+													list[(craft.recipe[2][1])]={}
+													list[(craft.recipe[2][1])]=amount
+												else
+													local add =amount+tonumber(list[(craft.recipe[2][1])])
+													list[(craft.recipe[2][1])]=add
 												end
 											end
 											if craft.recipe[2][2] then
-												local item=ItemStack(craft.recipe[2][2])
-												if item:get_stack_max()<10 then
-													item=ItemStack(item:get_name()..m)
-												end
-												for ci=1,amount,1 do
-													inv:add_item(list,item)
+												if list[(craft.recipe[2][2])]==nil then
+													list[(craft.recipe[2][2])]={}
+													list[(craft.recipe[2][2])]=amount
+												else
+													local add =amount+tonumber(list[(craft.recipe[2][2])])
+													list[(craft.recipe[2][2])]=add
 												end
 											end
 											if craft.recipe[2][3] then
-												local item=ItemStack(craft.recipe[2][3])
-												if item:get_stack_max()<10 then
-													item=ItemStack(item:get_name()..m)
-												end
-												for ci=1,amount,1 do
-													inv:add_item(list,item)
+												if list[(craft.recipe[2][3])]==nil then
+													list[(craft.recipe[2][3])]={}
+													list[(craft.recipe[2][3])]=amount
+												else
+													local add =amount+tonumber(list[(craft.recipe[2][3])])
+													list[(craft.recipe[2][3])]=add
 												end
 											end
 										end
 									end
 									if craft.recipe[3] then
 										if (type(craft.recipe[3]) == "string") then
-											local item=ItemStack(craft.recipe[3])
-											if item:get_stack_max()<10 then
-												item=ItemStack(item:get_name()..m)
-											end
-											for ci=1,amount,1 do
-												inv:add_item(list,item)
+											if list[(craft.recipe[3])]==nil then
+												list[(craft.recipe[3])]={}
+												list[(craft.recipe[3])]=amount
+											else
+												local add =amount+tonumber(list[(craft.recipe[3])])
+												list[(craft.recipe[3])]=add
 											end
 										else
 											if craft.recipe[3][1] then
-												local item=ItemStack(craft.recipe[3][1])
-												if item:get_stack_max()<10 then
-													item=ItemStack(item:get_name()..m)
-												end
-												for ci=1,amount,1 do
-													inv:add_item(list,item)
+												if list[(craft.recipe[3][1])]==nil then
+													list[(craft.recipe[3][1])]={}
+													list[(craft.recipe[3][1])]=amount
+												else
+													local add =amount+tonumber(list[(craft.recipe[3][1])])
+													list[(craft.recipe[3][1])]=add
 												end
 											end
 											if craft.recipe[3][2] then
-												local item=ItemStack(craft.recipe[3][2])
-												if item:get_stack_max()<10 then
-													item=ItemStack(item:get_name()..m)
-												end
-												for ci=1,amount,1 do
-													inv:add_item(list,item)
+												if list[(craft.recipe[3][2])]==nil then
+													list[(craft.recipe[3][2])]={}
+													list[(craft.recipe[3][2])]=amount
+												else
+													local add =amount+tonumber(list[(craft.recipe[3][2])])
+													list[(craft.recipe[3][2])]=add
 												end
 											end
 											if craft.recipe[3][3] then
-												local item=ItemStack(craft.recipe[3][3])
-												if item:get_stack_max()<10 then
-													item=ItemStack(item:get_name()..m)
-												end
-												for ci=1,amount,1 do
-													inv:add_item(list,item)
+												if list[(craft.recipe[3][3])]==nil then
+													list[(craft.recipe[3][3])]={}
+													list[(craft.recipe[3][3])]=amount
+												else
+													local add =amount+tonumber(list[(craft.recipe[3][3])])
+													list[(craft.recipe[3][3])]=add
 												end
 											end
 										end
 									end
 									if craft.recipe[4] then
 										if (type(craft.recipe[4]) == "string") then
-											local item=ItemStack(craft.recipe[4])
-											if item:get_stack_max()<10 then
-												item=ItemStack(item:get_name()..m)
-											end
-											for ci=1,amount,1 do
-												inv:add_item(list,item)
+											if list[(craft.recipe[4])]==nil then
+												list[(craft.recipe[4])]={}
+												list[(craft.recipe[4])]=amount
+											else
+												local add =amount+tonumber(list[(craft.recipe[4])])
+												list[(craft.recipe[4])]=add
 											end
 										end
 									end
 									if craft.recipe[5] then
 										if (type(craft.recipe[5]) == "string") then
-											local item=ItemStack(craft.recipe[5])
-											if item:get_stack_max()<10 then
-												item=ItemStack(item:get_name()..m)
-											end
-											for ci=1,amount,1 do
-												inv:add_item(list,item)
+											if list[(craft.recipe[5])]==nil then
+												list[(craft.recipe[5])]={}
+												list[(craft.recipe[5])]=amount
+											else
+												local add =amount+tonumber(list[(craft.recipe[5])])
+												list[(craft.recipe[5])]=add
 											end
 										end
 									end
 									if craft.recipe[6] then
 										if (type(craft.recipe[6]) == "string") then
-											local item=ItemStack(craft.recipe[6])
-											if item:get_stack_max()<10 then
-												item=ItemStack(item:get_name()..m)
-											end
-											for ci=1,amount,1 do
-												inv:add_item(list,item)
+											if list[(craft.recipe[6])]==nil then
+												list[(craft.recipe[6])]={}
+												list[(craft.recipe[6])]=amount
+											else
+												local add =amount+tonumber(list[(craft.recipe[6])])
+												list[(craft.recipe[6])]=add
 											end
 										end
 									end
 									if craft.recipe[7] then
 										if (type(craft.recipe[7]) == "string") then
-											local item=ItemStack(craft.recipe[7])
-											if item:get_stack_max()<10 then
-												item=ItemStack(item:get_name()..m)
-											end
-											for ci=1,amount,1 do
-												inv:add_item(list,item)
+											if list[(craft.recipe[7])]==nil then
+												list[(craft.recipe[7])]={}
+												list[(craft.recipe[7])]=amount
+											else
+												local add =amount+tonumber(list[(craft.recipe[7])])
+												list[(craft.recipe[7])]=add
 											end
 										end
 									end
 									if craft.recipe[8] then
 										if (type(craft.recipe[8]) == "string") then
-											local item=ItemStack(craft.recipe[8])
-											if item:get_stack_max()<10 then
-												item=ItemStack(item:get_name()..m)
-											end
-											for ci=1,amount,1 do
-												inv:add_item(list,item)
+											if list[(craft.recipe[8])]==nil then
+												list[(craft.recipe[8])]={}
+												list[(craft.recipe[8])]=amount
+											else
+												local add =amount+tonumber(list[(craft.recipe[8])])
+												list[(craft.recipe[8])]=add
 											end
 										end
 									end
 									if craft.recipe[9] then
 										if (type(craft.recipe[9]) == "string") then
-											local item=ItemStack(craft.recipe[9])
-											if item:get_stack_max()<10 then
-												item=ItemStack(item:get_name()..m)
-											end
-											for ci=1,amount,1 do
-												inv:add_item(list,item)
+											if list[(craft.recipe[9])]==nil then
+												list[(craft.recipe[9])]={}
+												list[(craft.recipe[9])]=amount
+											else
+												local add =amount+tonumber(list[(craft.recipe[9])])
+												list[(craft.recipe[9])]=add
 											end
 										end
 									end
 								end
+								if istest==1 then
+									test=list
+									list=nil
+									list={}
+									list=list2
+								end
+
 							end
 	
+
 							if istest==1 then
-								for jj=1,inv:get_size("trylist"),1 do
-									local item=inv:get_stack("trylist", jj):get_name()
-									inv:set_stack("trylist", jj, ItemStack(nil))
-									if string.len(item)>4 and string.sub(item,string.len(item)-3)==m then
-										item=string.sub(item,1,string.len(item)-4)
-									end
-									inv:set_stack("trylist", jj, ItemStack(item))
-								end
 								local value=0
-								for h=1,inv:get_size("trylist"),1 do
-									if inv:get_stack("trylist", h)~=nil then
-										local name=string.lower(inv:get_stack("trylist", h):get_name())
+								local h=0
+								for name,testcount in pairs(test) do
+									h=h+1
+									if h>888 then
+									break
+									end
+									if testcount>0 then
 										if name.def==nil or (craft_guide.crafts[name]==nil 
 											and string.sub(name,1,8)=="technic:")
 											then
@@ -1549,52 +1045,12 @@ end
 											end
 										end
 									end
-									inv:set_stack("trylist", h,ItemStack(nil))
 								end
 								if value<bestvalue then
 									bestcraft=index
 									bestvalue=value
 								end
 							else
-								local overflow_index=1
-								for h=1,inv:get_size("youneed"),1 do
-									if inv:get_stack("youneed", h)~=nil and inv:get_stack("youneed", h):get_name()~=nil 
-										and inv:get_stack("youneed", h):get_name()~="" then
-										if count[h]==nil or count[h]==0 then 
-											count[h]=inv:get_stack("youneed", h):get_count()
-										else
-											count[h]=count[h]+(inv:get_stack("youneed", h):get_count()-1)
-										end
-										inv:set_stack("youneed", h,ItemStack(inv:get_stack("youneed", h):get_name()))
-									else
-										if overflow_index==0 or inv:get_stack("overflow", overflow_index)==nil 
-											or inv:get_stack("overflow", overflow_index):get_name()==nil
-											or inv:get_stack("overflow", overflow_index):get_name()==""
-											then
-												overflow_index=0
-										else
-											local additem=inv:get_stack("overflow",overflow_index):get_name()
-											count[h]=inv:get_stack("overflow", overflow_index):get_count()*50
-											inv:set_stack("youneed", h, ItemStack(additem))
-											inv:set_stack("overflow", overflow_index,ItemStack(nil))
-											overflow_index=overflow_index+1
-										end
-									end
-								end
-								local size=inv:get_size("youneed")
-								for jjj=1,size,1 do
-									local item1=inv:get_stack("youneed", jjj):get_name()
-									if item1~=nil then
-										for jj=jjj+1,size,1 do
-											local item2=inv:get_stack("youneed", jj):get_name()
-											if item1==item2 and count[jjj]~=nil and count[jj]~=nil then
-												count[jjj]=count[jjj]+count[jj]
-												count[jj]=0
-												inv:set_stack("youneed", jj,ItemStack(nil))
-											end
-										end
-									end
-								end
 								craftnumber=999
 								break
 							end
@@ -1607,69 +1063,54 @@ end
 			end
 		end
 	end
-	local itemlist=""
-	local size=inv:get_size("youneed")
-	for jjj=1,size,1 do
-		local item1=inv:get_stack("youneed", jjj):get_name()
-		if item1~=nil then
-			for jj=jjj+1,size,1 do
-				local item2=inv:get_stack("youneed", jj):get_name()
-				if item1==item2 and count[jjj]~=nil and count[jj]~=nil then
-					count[jjj]=count[jjj]+count[jj]
-					count[jj]=0
-					inv:set_stack("youneed", jj,ItemStack(nil))
-				end
-			end
-		end
-	end
-	for jj=1,inv:get_size("youneed"),1 do
-		local item=inv:get_stack("youneed", jj):get_name()
-		inv:set_stack("youneed", jj, ItemStack(nil))
-		if string.len(item)>4 and string.sub(item,string.len(item)-3)==m then
-			item=string.sub(item,1,string.len(item)-4)
-		end
-		inv:add_item("youneed", ItemStack(item))
-	end
-	for jjj=1,55,1 do
-		if count[jjj]~=nil then 
-			if count[jjj]==0 then
-				for jj=jjj+1,55,1 do
-					if count[jj]~=nil and count[jj]~=0 then
-						count[jjj]=count[jj]
-						count[jj]=0
-						break
+	local jj=1
+	local duplicate=0
+	for name,amount in pairs(list) do
+		local count=tonumber(amount)
+		if name~=nil and count>0 and string.lower(name)~=string.upper(name) then
+			local lower=string.lower(name)
+			if craft_guide.you_need_list[lower]~=nil and craft_guide.you_need_list[lower]>0 then
+				craft_guide.you_need_list[lower]=count+craft_guide.you_need_list[lower]
+			else
+				inv:add_item("youneed", lower)
+				if inv:get_stack("youneed",jj)==nil or inv:get_stack("youneed",jj):get_name()=="" then
+					for jjj=1,jj,1 do
+						if inv:get_stack("youneed",jjj):get_count()>1 then
+							local alias=string.lower(inv:get_stack("youneed",jjj):get_name())
+							craft_guide.you_need_list[alias]=craft_guide.you_need_list[alias]+count
+							inv:set_stack("youneed",jjj,alias)
+
+						end
 					end
+							inv:set_stack("youneed",jj,ItemStack(nil))
+							duplicate=1
+							list[lower]=0
+
+				elseif string.lower(inv:get_stack("youneed",jj):get_name())~=lower then
+					local alias=string.lower(inv:get_stack("youneed",jj):get_name())
+					if list[alias]==nil then
+						craft_guide.you_need_list[alias]={}
+						craft_guide.you_need_list[alias]=count
+					else
+						list[alias]=list[alias]+count
+					end
+					list[lower]=0
+				else
+					craft_guide.you_need_list[lower]={}
+					craft_guide.you_need_list[lower]=count
+				end
+				if duplicate==0 then
+					jj=jj+1
+				else
+					duplicate=0
+				end
+				if jj>inv:get_size("youneed") then
+					break
 				end
 			end
 		end
 	end
-	local xx=8.1
-	local yy=7.45
-	local widht=6
-	if meta:get_string("switch")=="youneed" and meta:get_string("poslist")=="up" then
-		xx=0.1
-		yy=1.45
-		widht=14
-	end
-	for jj=1,inv:get_size("youneed"),1 do
-		if count[jj]==nil then
-			jj=111
-			break
-		else
-			if count[jj]>0 then
-				local cnt=math.floor(((count[jj])/globalcount)*1000+0.49)/1000
-				if cnt>1000 then
-					cnt=math.floor(cnt+0.49)
-				elseif cnt>100 then
-					cnt=math.floor(cnt*10+0.49)/10
-				elseif cnt>10 then
-					cnt=math.floor(cnt*100+0.49)/100
-				end
-				itemlist=itemlist.."label["..tostring(xx+((jj-1)%widht))..","..tostring(yy+math.floor((jj-1)/widht))..";"..tostring(cnt).."]"
-			end
-		end
-	end
-	meta:set_string("amounts",itemlist)
+	meta:set_string("globalcount",tostring(globalcount))
 	meta:set_string("formspec",craft_guide.get_craft_guide_formspec(meta))
 end
 
@@ -1814,4 +1255,3 @@ end
 craft_guide.allow_metadata_inventory_take = function(pos, listname, index, stack, player)
 	return 0
 end
-
