@@ -1405,10 +1405,6 @@ end
 				craft_guide.you_need_list[lower]=count+craft_guide.you_need_list[lower]
 			else
 				inv:add_item("youneed", lower)
-							craft_guide.log(name)
-							craft_guide.log(amount)
-							craft_guide.log(amount)
-							craft_guide.log(inv:get_stack("youneed",jj):get_name())
 				if inv:get_stack("youneed",jj)==nil or inv:get_stack("youneed",jj):get_name()=="" then
 					for jjj=1,jj,1 do
 						if inv:get_stack("youneed",jjj):get_count()>1 then
