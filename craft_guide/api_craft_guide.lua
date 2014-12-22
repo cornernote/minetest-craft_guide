@@ -125,7 +125,7 @@ craft_guide.fuel = {}
 
 craft_guide.you_need_list = {}
 
-craft_guide.fueladded=false
+craft_guide.fuel_to_add=false
 
 -- log
 craft_guide.log = function(message)
@@ -146,7 +146,7 @@ craft_guide.register_craft = function(options)
 			craft_guide.fuel[itemstack:get_name()] = {}
 		end
 		table.insert(craft_guide.fuel[itemstack:get_name()],options)
-		craft_guide.fueladded=true
+		craft_guide.fuel_to_add=true
 		return 
 	end
 
@@ -189,6 +189,9 @@ end
 
 -- get_craft_guide_formspec
 craft_guide.get_craft_guide_formspec = function(meta, search, page, alternate)
+	if craft_guide.fuel_to_add then
+		craft_guide.add_additional_crafts()
+	end
 	if search == nil then 
 		search = meta:get_string("search")
 		if search == nil then 
@@ -326,157 +329,6 @@ end
 
 -- on_construct
 craft_guide.on_construct = function(pos)
-	--when it is constructed for the first time add addition recipes, including fuel recipes
-	if craft_guide.other_crafting_types then
-		if minetest.get_modpath("technic") then
-			local oldversion=false
-			local recipelist={}
-			if technic.recipes==nil or technic.recipes["grinding"]==nil and technic.grinder_recipes~=nil then
-				oldversion=true
-				recipelist=technic.grinder_recipes
-			else
-				recipelist=technic.recipes["grinding"]
-			end
-			for t,recipe in pairs(recipelist) do
-				recipe.type="Grinder"
-				local name=ItemStack(recipe.output):get_name()
-				if name~=nil and name~="" then
-					if craft_guide.crafts[name]==nil then
-						craft_guide.crafts[name] = {}
-					end
-					recipe.time=recipe.time or 3
-					table.insert(craft_guide.crafts[name],recipe)
-				end
-			end
-			if oldversion then
-				for t,recipe in pairs(technic.compressor_recipes) do
-					recipe.type="Compressor"
-					local name=ItemStack(recipe.dst_name):get_name()
-					if name~=nil and name~="" then
-						if craft_guide.crafts[name]==nil then
-							craft_guide.crafts[name] = {}
-						end
-						recipe.input=t.." "..tostring(recipe.src_count)
-						recipe.output=recipe.dst_name.." "..tostring(recipe.dst_count)
-						recipe.time=recipe.time or 4
-						table.insert(craft_guide.crafts[name],recipe)
-					end
-				end
-			else
-				for t,recipe in pairs(technic.recipes["compressing"]) do
-					recipe.type="Compressor"
-					local name=ItemStack(recipe.output):get_name()
-					if name~=nil and name~="" then
-						if craft_guide.crafts[name]==nil then
-							craft_guide.crafts[name] = {}
-						end
-						recipe.time=recipe.time or 4
-						table.insert(craft_guide.crafts[name],recipe)
-					end
-				end
-
-			end
-			if oldversion then
-				for t,recipe in pairs(technic.extractor_recipes) do
-					recipe.type="Extractor"
-					local name=ItemStack(recipe.dst_name):get_name()
-					if name~=nil and name~="" then
-						if craft_guide.crafts[name]==nil then
-							craft_guide.crafts[name] = {}
-						end
-						recipe.input=t.." "..tostring(recipe.src_count)
-						recipe.output=recipe.dst_name.." "..tostring(recipe.dst_count)
-						recipe.time=recipe.time or 4
-						table.insert(craft_guide.crafts[name],recipe)
-					end
-				end
-			else
-				for t,recipe in pairs(technic.recipes["extracting"]) do
-					recipe.type="Extractor"
-					local name=ItemStack(recipe.output):get_name()
-					if name~=nil and name~="" then
-						if craft_guide.crafts[name]==nil then
-							craft_guide.crafts[name] = {}
-						end
-						recipe.time=recipe.time or 4
-						table.insert(craft_guide.crafts[name],recipe)
-					end
-				end
-
-			end
-			if oldversion then
-				recipelist=technic.alloy_recipes
-			else
-				recipelist=technic.recipes["alloy"]
-			end
-			for t,recipe in pairs(recipelist) do
-				recipe.type="Alloy Furnace"
-				local name=ItemStack(recipe.output):get_name()
-				if name~=nil and name~="" then
-					if craft_guide.crafts[name]==nil then
-						craft_guide.crafts[name] = {}
-					end
-					recipe.time=recipe.time or 6
-					table.insert(craft_guide.crafts[name],recipe)
-				end
-			end
-			if not oldversion then
-			for t,recipe in pairs(technic.recipes["separating"]) do
-				recipe.type="Centrifuge"
-				local name=ItemStack(recipe.output):get_name()
-				if name~=nil and name~="" then
-					if craft_guide.crafts[name]==nil then
-						craft_guide.crafts[name] = {}
-					end
-					recipe.time=recipe.time or 10
-					table.insert(craft_guide.crafts[name],recipe)
-				end
-			end
-				
-			end
-		end
-	end
-	craft_guide.other_crafting_types = false
-	if craft_guide.fueladded then
-		--add crafts with type "fuel"
-		for name,def in pairs(minetest.registered_items) do
-			if (not def.groups.not_in_craft_guide or def.groups.not_in_craft_guide == 0) then
-				if craft_guide.fuel[name]~=nil then
-					if craft_guide.crafts[name]==nil then
-						craft_guide.crafts[name] = {}
-					end
-					local fuels=craft_guide.fuel[name]
-					local fuel=fuels[1]
-					table.insert(craft_guide.crafts[name],fuel)
-				else
-					local best=0
-					local bestgroup=""
-					for group,_ in pairs(def.groups) do
-						if craft_guide.fuel["group:"..group]~=nil then
-							local fuels=craft_guide.fuel["group:"..group]
-							local fuel=fuels[1]
-							if fuel.burntime>best then
-								best=fuel.burntime
-								bestgroup=group
-							end
-						end
-					end
-					if bestgroup~="" then
-						if craft_guide.crafts[name]==nil then
-							craft_guide.crafts[name] = {}
-						end
-						local fuels=craft_guide.fuel["group:"..bestgroup]
-						local fuel=fuels[1]
-						table.insert(craft_guide.crafts[name],fuel)
-					end
-				end
-			end
-		end	
-	end
-
-	craft_guide.fueladded=false
-	craft_guide.fuel=nil
-	craft_guide.fuel={}
 	local meta = minetest.env:get_meta(pos)
 	local inv = meta:get_inventory()
 	inv:set_size("output", 1)
@@ -1512,6 +1364,161 @@ craft_guide.create_inventory = function(inv, search)
 	for _,itemstring in ipairs(craft_guide_list) do
 		inv:add_item("main", ItemStack(itemstring))
 	end
+end
+
+
+-- add fuel recipes and recipes from technic machines to craft list
+craft_guide.add_additional_crafts = function()
+	if craft_guide.other_crafting_types then
+		if minetest.get_modpath("technic") then
+			local oldversion=false
+			local recipelist={}
+			if technic.recipes==nil or technic.recipes["grinding"]==nil and technic.grinder_recipes~=nil then
+				oldversion=true
+				recipelist=technic.grinder_recipes
+			else
+				recipelist=technic.recipes["grinding"]
+			end
+			for t,recipe in pairs(recipelist) do
+				recipe.type="Grinder"
+				local name=ItemStack(recipe.output):get_name()
+				if name~=nil and name~="" then
+					if craft_guide.crafts[name]==nil then
+						craft_guide.crafts[name] = {}
+					end
+					recipe.time=recipe.time or 3
+					table.insert(craft_guide.crafts[name],recipe)
+				end
+			end
+			if oldversion then
+				for t,recipe in pairs(technic.compressor_recipes) do
+					recipe.type="Compressor"
+					local name=ItemStack(recipe.dst_name):get_name()
+					if name~=nil and name~="" then
+						if craft_guide.crafts[name]==nil then
+							craft_guide.crafts[name] = {}
+						end
+						recipe.input=t.." "..tostring(recipe.src_count)
+						recipe.output=recipe.dst_name.." "..tostring(recipe.dst_count)
+						recipe.time=recipe.time or 4
+						table.insert(craft_guide.crafts[name],recipe)
+					end
+				end
+			else
+				for t,recipe in pairs(technic.recipes["compressing"]) do
+					recipe.type="Compressor"
+					local name=ItemStack(recipe.output):get_name()
+					if name~=nil and name~="" then
+						if craft_guide.crafts[name]==nil then
+							craft_guide.crafts[name] = {}
+						end
+						recipe.time=recipe.time or 4
+						table.insert(craft_guide.crafts[name],recipe)
+					end
+				end
+
+			end
+			if oldversion then
+				for t,recipe in pairs(technic.extractor_recipes) do
+					recipe.type="Extractor"
+					local name=ItemStack(recipe.dst_name):get_name()
+					if name~=nil and name~="" then
+						if craft_guide.crafts[name]==nil then
+							craft_guide.crafts[name] = {}
+						end
+						recipe.input=t.." "..tostring(recipe.src_count)
+						recipe.output=recipe.dst_name.." "..tostring(recipe.dst_count)
+						recipe.time=recipe.time or 4
+						table.insert(craft_guide.crafts[name],recipe)
+					end
+				end
+			else
+				for t,recipe in pairs(technic.recipes["extracting"]) do
+					recipe.type="Extractor"
+					local name=ItemStack(recipe.output):get_name()
+					if name~=nil and name~="" then
+						if craft_guide.crafts[name]==nil then
+							craft_guide.crafts[name] = {}
+						end
+						recipe.time=recipe.time or 4
+						table.insert(craft_guide.crafts[name],recipe)
+					end
+				end
+
+			end
+			if oldversion then
+				recipelist=technic.alloy_recipes
+			else
+				recipelist=technic.recipes["alloy"]
+			end
+			for t,recipe in pairs(recipelist) do
+				recipe.type="Alloy Furnace"
+				local name=ItemStack(recipe.output):get_name()
+				if name~=nil and name~="" then
+					if craft_guide.crafts[name]==nil then
+						craft_guide.crafts[name] = {}
+					end
+					recipe.time=recipe.time or 6
+					table.insert(craft_guide.crafts[name],recipe)
+				end
+			end
+			if not oldversion then
+			for t,recipe in pairs(technic.recipes["separating"]) do
+				recipe.type="Centrifuge"
+				local name=ItemStack(recipe.output):get_name()
+				if name~=nil and name~="" then
+					if craft_guide.crafts[name]==nil then
+						craft_guide.crafts[name] = {}
+					end
+					recipe.time=recipe.time or 10
+					table.insert(craft_guide.crafts[name],recipe)
+				end
+			end
+				
+			end
+		end
+	end
+	craft_guide.other_crafting_types = false
+	if not craft_guide.fuel_to_add then
+		--add crafts with type "fuel"
+		for name,def in pairs(minetest.registered_items) do
+			if (not def.groups.not_in_craft_guide or def.groups.not_in_craft_guide == 0) then
+				if craft_guide.fuel[name]~=nil then
+					if craft_guide.crafts[name]==nil then
+						craft_guide.crafts[name] = {}
+					end
+					local fuels=craft_guide.fuel[name]
+					local fuel=fuels[1]
+					table.insert(craft_guide.crafts[name],fuel)
+				else
+					local best=0
+					local bestgroup=""
+					for group,_ in pairs(def.groups) do
+						if craft_guide.fuel["group:"..group]~=nil then
+							local fuels=craft_guide.fuel["group:"..group]
+							local fuel=fuels[1]
+							if fuel.burntime>best then
+								best=fuel.burntime
+								bestgroup=group
+							end
+						end
+					end
+					if bestgroup~="" then
+						if craft_guide.crafts[name]==nil then
+							craft_guide.crafts[name] = {}
+						end
+						local fuels=craft_guide.fuel["group:"..bestgroup]
+						local fuel=fuels[1]
+						table.insert(craft_guide.crafts[name],fuel)
+					end
+				end
+			end
+		end	
+	end
+
+	craft_guide.fuel_to_add=false
+	craft_guide.fuel=nil
+	craft_guide.fuel={}
 end
 
 
