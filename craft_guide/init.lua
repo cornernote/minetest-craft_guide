@@ -20,6 +20,13 @@ minetest.register_craft = function (options)
 	craft_guide.register_craft(options)
 end
 
+-- override minetest.register_alias
+local minetest_register_alias = minetest.register_alias
+minetest.register_alias = function (name, convert_to) 
+	minetest_register_alias(name,convert_to) 
+	craft_guide.register_alias(name, convert_to)
+end
+
 -- register entities
 dofile(minetest.get_modpath("craft_guide").."/register_node.lua")
 dofile(minetest.get_modpath("craft_guide").."/register_craft.lua")
