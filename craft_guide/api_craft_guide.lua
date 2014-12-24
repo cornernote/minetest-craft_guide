@@ -43,7 +43,8 @@ craft_guide.other_crafting_types = true
 
 
 --don't show crafts which are registered in moreblocks mod to get the original item back from its slabs, panels, microblocks, etc...
-craft_guide.remove_rebuild_crafts = true
+--and don't show all ingots, dusts and blocks of uranium with different percentages
+craft_guide.remove_cluttering_crafts = true
 
 
 -- here you can define base items for "you need" feature
@@ -121,9 +122,13 @@ craft_guide.basic_items	= {
 -- define api variables
 craft_guide.crafts = {}
 
+craft_guide.alias = {}
+
 craft_guide.fuel = {}
 
 craft_guide.you_need_list = {}
+
+craft_guide.add_things=true
 
 craft_guide.fuel_to_add=false
 
@@ -158,7 +163,7 @@ craft_guide.register_craft = function(options)
 		return
 	end
 	--this should remove crafts which craft original item back from stairs, slabs, panels or micros, 
-	if craft_guide.remove_rebuild_crafts then
+	if craft_guide.remove_cluttering_crafts then
 		local mod,_=string.find(itemstack:get_name(),":")
 		if mod~=nil then
 			mod=string.sub(itemstack:get_name(),1,mod)
@@ -170,11 +175,19 @@ craft_guide.register_craft = function(options)
 			elseif options.recipe[2]~=nil and type(options.recipe[2][1])=="string" then
 				recipestr=" "..options.recipe[2][1]
 			end
-			if recipestr==""or (options.recipe~=nil and string.find(recipestr," "..mod.."panel_")==nil 
+			if 			
+				--dont show recipes for ingots, dusts and blocks of uranium with different percentages
+				string.find(itemstack:get_name(),"technic:uranium._")==nil  
+				and string.find(itemstack:get_name(),"technic:uranium.._")==nil
+				and 
+
+				(recipestr==""or (options.recipe~=nil and string.find(recipestr," "..mod.."panel_")==nil 
 				and string.find(recipestr," "..mod.."stair_")==nil
 				and string.find(recipestr," "..mod.."micro_")==nil  and string.find(recipestr," "..mod.."slab_")==nil
 				and string.find(recipestr," moreblocks:panel_")==nil and string.find(recipestr," moreblocks:stair_")==nil
-				and string.find(recipestr," moreblocks:micro_")==nil  and string.find(recipestr," moreblocks:slab_")==nil) then
+				and string.find(recipestr," moreblocks:micro_")==nil  and string.find(recipestr," moreblocks:slab_")==nil)) then
+
+
 				--craft_guide.log("registered craft for - "..itemstack:get_name())
 				if craft_guide.crafts[itemstack:get_name()]==nil then
 					craft_guide.crafts[itemstack:get_name()] = {}
@@ -187,9 +200,16 @@ craft_guide.register_craft = function(options)
 end
 
 
+-- register_alias
+craft_guide.register_alias = function(alias,convert_to)
+	local count=#craft_guide.alias
+	craft_guide.alias[count+1]=alias
+	craft_guide.alias[count+2]=convert_to
+end
+
 -- get_craft_guide_formspec
 craft_guide.get_craft_guide_formspec = function(meta, search, page, alternate)
-	if craft_guide.fuel_to_add then
+	if craft_guide.add_things then
 		craft_guide.add_additional_crafts()
 	end
 	if search == nil then 
@@ -284,12 +304,15 @@ craft_guide.get_craft_guide_formspec = function(meta, search, page, alternate)
 			formspec=formspec.."label[0,6.5;Output]"
 		end
 		formspec=formspec.."list[current_name;output;0,7;1,1;]"
-		.."label[2,6.5;Inventory Craft]"
 
-		..craft_guide.build_button_list(meta,inv,"build",3,11,2,7,3)
+		.."label[2,6.5;Inventory Craft]"
+		if not (inv:get_stack("additional",1)==nil or inv:get_stack("additional",1):get_name()==nil or inv:get_stack("additional",1):get_name()=="") then
+			formspec=formspec.."list[current_name;additional;0.96,7;1,1;]"
+		end
+		formspec=formspec..craft_guide.build_button_list(meta,inv,"build",3,11,2,7,3)
 		if not (inv:get_stack("cook",1)==nil or inv:get_stack("cook",1):get_name()==nil or inv:get_stack("cook",1):get_name()=="")
 			or (inv:get_stack("fuel",1)==nil or inv:get_stack("fuel",1):get_name()==nil or inv:get_stack("fuel",1):get_name()=="") then
-			formspec=formspec.."label["..tostring(6.35-string.len(meta:get_string("method"))*0.07)..",6.5;"..meta:get_string("method").."]"
+			formspec=formspec.."label["..tostring(6.22-string.len(meta:get_string("method"))*0.05)..",6.5;"..meta:get_string("method").."]"
 			if not (inv:get_stack("cook",2)==nil or inv:get_stack("cook",2):get_name()==nil or inv:get_stack("cook",2):get_name()=="") then
 				formspec=formspec..craft_guide.build_button_list(meta,inv,"cook",1,2,5.5,7,2)
 			else
@@ -332,6 +355,7 @@ craft_guide.on_construct = function(pos)
 	local meta = minetest.env:get_meta(pos)
 	local inv = meta:get_inventory()
 	inv:set_size("output", 1)
+	inv:set_size("additional", 1) --here goes the second output of centrifuge recipe, just shown when needed
 	inv:set_size("build", 3*3)
 	inv:set_size("cook", 2*1)
 	inv:set_size("fuel", 1)
@@ -372,9 +396,12 @@ craft_guide.on_receive_fields = function(pos, formname, fields, player)
 		if string.lower(search)==string.upper(search) and tonumber(search)==nil and search~="*" then
 			search=""
 		end
-	end
 	meta:set_string("search", search)
+	end
 	if fields.craft_guide_search_button then
+		if search==nil then
+			meta:set_string("search", "")
+		end
 		if meta:get_string("switch")=="youneed" and meta:get_string("poslist")=="up" then
 			meta:set_string("switch","bookmarks")
 		end		
@@ -518,16 +545,20 @@ craft_guide.build_button_list = function(meta,inv,list,start_index,end_index,x,y
 						end
 					end
 					if hasgroup==1 then
+
                                                 --prefer items from default mod
 						if string.sub(name,1,8)=="default:" then
-							string=string.."item_image_button["..tostring(x+((i-1)%w))..","
-							..tostring(y+math.floor((i-1)/w))..";1,1;"
-							..name..";t_758s"..tostring(i+start_index-1)..";group]"
-							.."tooltip[t_758s"..tostring(i+start_index-1)..";"
-							..string.upper(string.sub(groups,1,1))..string.sub(groups.." ",2).."]"
-
-							saved=""
-							break
+							--prefer items with simple short names, because cnc machines adds items under default prefix too
+							if string.len(name)<20 then 
+								string=string.."item_image_button["..tostring(x+((i-1)%w))..","
+								..tostring(y+math.floor((i-1)/w))..";1,1;"
+								..name..";t_758s"..tostring(i+start_index-1)..";group]"
+								.."tooltip[t_758s"..tostring(i+start_index-1)..";"
+								..string.upper(string.sub(groups,1,1))..string.sub(groups.." ",2).."]"
+	
+								saved=""
+								break
+							end
 						elseif saved=="" then
 							saved=name
 						end
@@ -541,6 +572,7 @@ craft_guide.build_button_list = function(meta,inv,list,start_index,end_index,x,y
 				end
 			end
 		end
+
 		if string_old==string and ((stack~=nil and stack:get_name()~="") or show_empty==1) then
 			string=string.."list[current_name;"..list..";"..tostring(x+((i-1)%w))..","..tostring(y+math.floor((i-1)/w))
 				..";1,1;"..tostring(i-1).."]"
@@ -630,6 +662,7 @@ craft_guide.update_recipe = function(meta, player, stack, alternate)
 
 	inv:set_stack("fuel", 1, nil)
 	inv:set_stack("machine", 1, nil)
+	inv:set_stack("additional", 1, nil)
 
 	meta:set_string("method","Cook")
 
@@ -671,24 +704,33 @@ craft_guide.update_recipe = function(meta, player, stack, alternate)
 				meta:set_string("time",tostring(craft.cooktime))
 			end
 			inv:set_stack("cook", 1, craft.recipe)
+		if minetest.get_modpath("default") then
 			inv:set_stack("machine", 1, ItemStack("default:furnace"))
+		end
 		else
 		-- custom types added by technic mod
-			local input=craft.input
-			if input==nil then
-				input=craft.input[1]
+			local input={}
+			if type(craft.input)~="table" or craft.input[1]==nil or craft.input[1]=="" then
+				table.insert(input,craft.input)
+			else 
+				input=craft.input
 			end
+			if type(input)~="table" or input[1]==nil or input[1]=="" then
+				input={}
+				table.insert(input,craft.input)
+			end
+
 			if craft.type=="Grinder" then
 				inv:set_stack("machine", 1, ItemStack("technic:lv_grinder"))
-				inv:set_stack("cook", 1, input)
+				inv:set_stack("cook", 1, input[1])
 			
 			elseif craft.type=="Extractor" then
 				inv:set_stack("machine", 1, ItemStack("technic:extractor"))
-				inv:set_stack("cook", 1, input)
+				inv:set_stack("cook", 1, input[1])
 
 			elseif craft.type=="Compressor" then
 				inv:set_stack("machine", 1, ItemStack("technic:compressor"))
-				inv:set_stack("cook", 1, input)
+				inv:set_stack("cook", 1, input[1])
 
 			elseif craft.type=="Alloy Furnace" then
 				inv:set_stack("machine", 1, ItemStack("technic:lv_alloy_furnace"))
@@ -697,7 +739,8 @@ craft_guide.update_recipe = function(meta, player, stack, alternate)
 
 			elseif craft.type=="Centrifuge" then
 				inv:set_stack("machine", 1, ItemStack("technic:mv_centrifuge"))
-				inv:set_stack("cook", 1, input)
+				inv:set_stack("cook", 1, input[1])
+				inv:set_stack("additional", 1, craft.output2)
 			end
 
 			meta:set_string("method",craft.type)
@@ -1376,20 +1419,41 @@ craft_guide.add_additional_crafts = function()
 			if technic.recipes==nil or technic.recipes["grinding"]==nil and technic.grinder_recipes~=nil then
 				oldversion=true
 				recipelist=technic.grinder_recipes
-			else
-				recipelist=technic.recipes["grinding"]
-			end
-			for t,recipe in pairs(recipelist) do
-				recipe.type="Grinder"
-				local name=ItemStack(recipe.output):get_name()
-				if name~=nil and name~="" then
-					if craft_guide.crafts[name]==nil then
-						craft_guide.crafts[name] = {}
+				for t,recipe in pairs(recipelist) do
+					recipe.type="Grinder"
+					local name=ItemStack(recipe.output):get_name()
+					if name~=nil and name~="" then
+						if craft_guide.crafts[name]==nil then
+							craft_guide.crafts[name] = {}
+						end
+						recipe.time=recipe.time or 3
+						table.insert(craft_guide.crafts[name],recipe)
 					end
-					recipe.time=recipe.time or 3
-					table.insert(craft_guide.crafts[name],recipe)
 				end
+
+			else
+				recipelist=technic.recipes["grinding"].recipes
+				for t,recipe in pairs(recipelist) do
+					recipe.type="Grinder"
+					local name=ItemStack(recipe.output):get_name()
+					if name~=nil and name~="" and (not craft_guide.remove_cluttering_crafts 
+						or (string.find(name,"technic:uranium._")==nil
+						and string.find(name,"technic:uranium.._")==nil)) then
+						if craft_guide.crafts[name]==nil then
+							craft_guide.crafts[name] = {}
+						end
+						local idx=1
+						for _name, _count in pairs(recipe.input) do
+							recipe.input[idx]=_name.." ".._count
+							break
+						end
+						recipe.time=recipe.time or 3
+						table.insert(craft_guide.crafts[name],recipe)
+					end
+				end
+
 			end
+
 			if oldversion then
 				for t,recipe in pairs(technic.compressor_recipes) do
 					recipe.type="Compressor"
@@ -1405,12 +1469,17 @@ craft_guide.add_additional_crafts = function()
 					end
 				end
 			else
-				for t,recipe in pairs(technic.recipes["compressing"]) do
+				for t,recipe in pairs(technic.recipes["compressing"].recipes) do
 					recipe.type="Compressor"
 					local name=ItemStack(recipe.output):get_name()
 					if name~=nil and name~="" then
 						if craft_guide.crafts[name]==nil then
 							craft_guide.crafts[name] = {}
+						end
+						local idx=1
+						for _name, _count in pairs(recipe.input) do
+							recipe.input[idx]=_name.." ".._count
+							break
 						end
 						recipe.time=recipe.time or 4
 						table.insert(craft_guide.crafts[name],recipe)
@@ -1433,12 +1502,17 @@ craft_guide.add_additional_crafts = function()
 					end
 				end
 			else
-				for t,recipe in pairs(technic.recipes["extracting"]) do
+				for t,recipe in pairs(technic.recipes["extracting"].recipes) do
 					recipe.type="Extractor"
 					local name=ItemStack(recipe.output):get_name()
 					if name~=nil and name~="" then
 						if craft_guide.crafts[name]==nil then
 							craft_guide.crafts[name] = {}
+						end
+						local idx=1
+						for _name, _count in pairs(recipe.input) do
+							recipe.input[idx]=_name.." ".._count
+							break
 						end
 						recipe.time=recipe.time or 4
 						table.insert(craft_guide.crafts[name],recipe)
@@ -1448,38 +1522,92 @@ craft_guide.add_additional_crafts = function()
 			end
 			if oldversion then
 				recipelist=technic.alloy_recipes
-			else
-				recipelist=technic.recipes["alloy"]
-			end
-			for t,recipe in pairs(recipelist) do
-				recipe.type="Alloy Furnace"
-				local name=ItemStack(recipe.output):get_name()
-				if name~=nil and name~="" then
-					if craft_guide.crafts[name]==nil then
-						craft_guide.crafts[name] = {}
+				for t,recipe in pairs(recipelist) do
+					recipe.type="Alloy Furnace"
+					local name=ItemStack(recipe.output):get_name()
+					if name~=nil and name~="" then
+						if craft_guide.crafts[name]==nil then
+							craft_guide.crafts[name] = {}
+						end
+						recipe.time=recipe.time or 6
+						table.insert(craft_guide.crafts[name],recipe)
 					end
-					recipe.time=recipe.time or 6
-					table.insert(craft_guide.crafts[name],recipe)
+				end
+			else
+				recipelist=technic.recipes["alloy"].recipes
+				for t,recipe in pairs(recipelist) do
+					local rec={}
+					rec.type="Alloy Furnace"
+					local name=ItemStack(recipe.output):get_name()
+					if name~=nil and name~="" then
+						if craft_guide.crafts[name]==nil then
+							craft_guide.crafts[name] = {}
+						end
+						local idx=1
+						rec.output=recipe.output
+						rec.time=recipe.time or 6
+						rec.input={}
+						for _name, _count in pairs(recipe.input) do
+							rec.input[idx]=_name.." ".._count
+							idx=idx+1
+							if idx>2 then
+							break
+							end
+						end
+						table.insert(craft_guide.crafts[name],rec)
+					end
 				end
 			end
 			if not oldversion then
-			for t,recipe in pairs(technic.recipes["separating"]) do
-				recipe.type="Centrifuge"
-				local name=ItemStack(recipe.output):get_name()
-				if name~=nil and name~="" then
-					if craft_guide.crafts[name]==nil then
-						craft_guide.crafts[name] = {}
+				for t,recipe in pairs(technic.recipes["separating"].recipes) do
+					local rec={}
+					local rec2={}
+					
+					rec.type="Centrifuge"
+					rec2.type="Centrifuge"
+					local name=ItemStack(recipe.output[1]):get_name()
+					local name2=ItemStack(recipe.output[2]):get_name()
+					local count=ItemStack(recipe.output[1]):get_count()
+					local count2=ItemStack(recipe.output[2]):get_count()
+					if name~=nil and name~="" and (not craft_guide.remove_cluttering_crafts 
+						or (string.find(name,"technic:uranium._")==nil
+						and string.find(name,"technic:uranium.._")==nil)) then
+						if craft_guide.crafts[name]==nil then
+							craft_guide.crafts[name] = {}
+						end
+						local idx=1
+						rec.input={}
+						rec2.input={}
+						for _name, _count in pairs(recipe.input) do
+							rec.input[idx]=_name.." ".._count
+							rec2.input[idx]=_name.." ".._count
+							break
+						end
+						rec.time=recipe.time or 10
+						rec2.time=recipe.time or 10
+						rec.output2=name2.." "..tostring(count2)
+						rec.output=name.." "..tostring(count)
+						table.insert(craft_guide.crafts[name],rec)
+						if name2~=nil and name2~="" and (not craft_guide.remove_cluttering_crafts 
+							or (string.find(name2,"technic:uranium._")==nil
+							and string.find(name2,"technic:uranium.._")==nil)) then
+							if craft_guide.crafts[name2]==nil then
+									craft_guide.crafts[name2] = {}
+							end
+							rec2.output=name2.." "..tostring(count2)
+							rec2.output2=name.." "..tostring(count)
+							table.insert(craft_guide.crafts[name2],rec2)
+						end
 					end
-					recipe.time=recipe.time or 10
-					table.insert(craft_guide.crafts[name],recipe)
 				end
-			end
 				
 			end
+
 		end
 	end
+
 	craft_guide.other_crafting_types = false
-	if not craft_guide.fuel_to_add then
+	if craft_guide.fuel_to_add then
 		--add crafts with type "fuel"
 		for name,def in pairs(minetest.registered_items) do
 			if (not def.groups.not_in_craft_guide or def.groups.not_in_craft_guide == 0) then
@@ -1519,6 +1647,39 @@ craft_guide.add_additional_crafts = function()
 	craft_guide.fuel_to_add=false
 	craft_guide.fuel=nil
 	craft_guide.fuel={}
+	-- all aliases should share the same crafting recipes
+	if craft_guide.add_things then
+		for i=1,9999,2 do
+			local alias=craft_guide.alias[i]
+			local convert_to=craft_guide.alias[i+1]
+			if alias~=nil and convert_to~=nil and (craft_guide.crafts[convert_to]~=nil or craft_guide.crafts[alias]~=nil) then
+				if craft_guide.crafts[convert_to]==nil and craft_guide.crafts[alias]~=nil then
+					craft_guide.crafts[convert_to]={}
+				elseif craft_guide.crafts[alias]==nil and craft_guide.crafts[convert_to]~=nil then
+					craft_guide.crafts[alias]={}
+				end
+				for ii=1,9999,1 do
+					local craft=(craft_guide.crafts[alias])[ii]
+					if craft==nil then
+						break
+					else
+						table.insert(craft_guide.crafts[convert_to],craft)
+					end
+				end
+			craft_guide.crafts[alias]={}
+				for ii=1,9999,1 do
+					local craft=(craft_guide.crafts[convert_to])[ii]
+					if craft==nil then
+						break
+					else
+						table.insert(craft_guide.crafts[alias],craft)
+					end
+				end
+
+			end
+		end
+	end
+	craft_guide.add_things=false
 end
 
 
