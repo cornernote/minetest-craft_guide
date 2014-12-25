@@ -372,8 +372,13 @@ end
 -- on_receive_fields
 craft_guide.on_receive_fields = function(pos, formname, fields, player)
 	local meta = minetest.env:get_meta(pos);
-
 	local inv = meta:get_inventory()
+		if inv:get_size("additional")==nil or inv:get_size("additional")~=1 then  --old version, construct again
+			local node=minetest.get_node(pos)
+			minetest.set_node(pos, node)
+			meta = minetest.env:get_meta(pos)
+			inv = meta:get_inventory()
+		end
 	local size = inv:get_size("main",1)
 	local stack = inv:get_stack("output",1)
 	local crafts = craft_guide.crafts[stack:get_name()]
