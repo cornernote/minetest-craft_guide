@@ -214,9 +214,6 @@ craft_guide.get_craft_guide_formspec = function(meta, search, page, alternate)
 	end
 	if search == nil then 
 		search = meta:get_string("search")
-		if search == nil then 
-			search = ""
-		end
 	end
 	if meta:get_string("formspec")=="" then
 		meta:set_string("saved_search","|")
@@ -306,7 +303,8 @@ craft_guide.get_craft_guide_formspec = function(meta, search, page, alternate)
 		formspec=formspec.."list[current_name;output;0,7;1,1;]"
 
 		.."label[2,6.5;Inventory Craft]"
-		if not (inv:get_stack("additional",1)==nil or inv:get_stack("additional",1):get_name()==nil or inv:get_stack("additional",1):get_name()=="") then
+		if not (inv:get_stack("additional",1)==nil or inv:get_stack("additional",1):get_name()==nil 
+			or inv:get_stack("additional",1):get_name()=="") then
 			formspec=formspec.."list[current_name;additional;0.96,7;1,1;]"
 		end
 		formspec=formspec..craft_guide.build_button_list(meta,inv,"build",3,11,2,7,3)
@@ -396,8 +394,10 @@ craft_guide.on_receive_fields = function(pos, formname, fields, player)
 		if string.lower(search)==string.upper(search) and tonumber(search)==nil and search~="*" then
 			search=""
 		end
-	meta:set_string("search", search)
+	else
+			search=meta:get_string("search")
 	end
+	meta:set_string("search", search)
 	if fields.craft_guide_search_button then
 		if search==nil then
 			meta:set_string("search", "")
