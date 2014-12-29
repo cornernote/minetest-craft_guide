@@ -1387,9 +1387,9 @@ end
 			craft_guide.saved_you_need_lists[stack_name.."@|³"..tostring(alternate)]={}
 			craft_guide.saved_you_need_lists[stack_name.."@|³"..tostring(alternate)]=tostring(globalcount)
 		end
-		meta:set_string("globalcount",tostring(globalcount))
-		meta:set_string("formspec",craft_guide.get_craft_guide_formspec(meta))
 	end
+	meta:set_string("globalcount",tostring(globalcount))
+	meta:set_string("formspec",craft_guide.get_craft_guide_formspec(meta))
 end
 
 -- create_inventory
