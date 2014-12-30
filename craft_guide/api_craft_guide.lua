@@ -126,6 +126,8 @@ craft_guide.alias = {}
 
 craft_guide.fuel = {}
 
+craft_guide.saved_you_need_lists = {}
+
 craft_guide.you_need_list = {}
 
 craft_guide.add_things=true
@@ -241,7 +243,7 @@ craft_guide.get_craft_guide_formspec = function(meta, search, page, alternate)
 	if crafts ~= nil then
 		alternates = #crafts
 	end
-	backbutton=""
+	local backbutton=""
 	if meta:get_string("saved_search")~="|" then
 		backbutton="button[6,5.8;2.7,1;back_button;<--- Back]"
 	end
@@ -290,10 +292,10 @@ craft_guide.get_craft_guide_formspec = function(meta, search, page, alternate)
 		.."label[0,5.4;Drag any item to the Output box to see the]"
 		.."label[0,5.8;craft. Save your favorite items in Bookmarks.]"
 
-		.."field[6,5.4;2,1;craft_guide_search_box;;"..tostring(search).."]"
-		.."button[7.5,5.1;1.2,1;craft_guide_search_button;Search]"
+		.."field[6,5.4;2.3,1;craft_guide_search_box;;"..tostring(search).."]"
+		.."button[7.8,5.1;1.2,1;craft_guide_search_button;Search]"
 		..backbutton
-		.."label[9,5.2;page "..tostring(page).." of "..tostring(pages).."]"
+		.."label[9.1,5.2;page "..tostring(page).." of "..tostring(pages).."]"
 		.."button[11,5;1.5,1;craft_guide_prev;<<]"
 		.."button[12.5,5;1.5,1;craft_guide_next;>>]"
 
@@ -499,11 +501,14 @@ craft_guide.on_receive_fields = function(pos, formname, fields, player)
 	local formspec = meta:get_string("formspec")
 	for button_number=1,29,1 do
 		if fields[("t_758s"..tostring(button_number))] then 
+			--search the group name of pressed group button directly in formspec string
 			xx,starts=string.find(formspec,"tooltip%[t_758s"..tostring(button_number)..";")
 			if starts~=nil then
 				ends,xx=string.find(formspec,"%]",starts+1)
 				local group=string.lower(string.sub(formspec,starts+1,ends-2))
+				--displaying of items in a group is implemented in search function, just need to set search string
 				meta:set_string("search", "group:"..group)
+				--save old search string for restoring when "<-- back" is pressed
 				if meta:get_string("saved_search")=="|" then
 					meta:set_string("saved_search", search)
 					meta:set_string("saved_page", tostring(page))
@@ -689,12 +694,18 @@ craft_guide.update_recipe = function(meta, player, stack, alternate)
 		alternate = 1
 	end
 	if stack:get_name()~=nil and stack:get_name()~="" then
-		craft_guide.log(player:get_player_name().." requests recipe "..alternate.." for "..stack:get_name())
+		if meta:get_string("switch")=="youneed" then
+			craft_guide.log(player:get_player_name().." shows needed items for recipe "..alternate.." for "..stack:get_name())
+		else
+			craft_guide.log(player:get_player_name().." requests recipe "..alternate.." for "..stack:get_name())
+		end
 	end	
 	local craft = crafts[alternate]
 	
 	-- show me the unknown items
-	craft_guide.log(dump(craft))
+
+	--craft_guide.log(dump(craft))
+
 	--minetest.chat_send_player(player:get_player_name(), "recipe for "..stack:get_name()..": "..dump(craft))
 	
 	local itemstack = ItemStack(craft.output)
@@ -843,21 +854,402 @@ craft_guide.update_recipe = function(meta, player, stack, alternate)
 	if meta:get_string("switch")=="youneed" and craft_guide.you_need then
 		craft_guide.you_need_list=nil
 		craft_guide.you_need_list={}
-		list[stack:get_name()] = {}
-		list[stack:get_name()] = 1
-		for j=1,6,1 do	--main iteration loop
-			local finished=1
-			local limit=inv:get_size("youneed")
-			local k=0
-			for name,count in pairs(list) do
-				if k>limit then
-					break
+		local stack_name=stack:get_name()
+		-- get the saved list if we have it already, no need to calcalute all again
+		if craft_guide.saved_you_need_lists[stack_name.."@|²"..tostring(alternate)]~=nil then
+			craft_guide.you_need_list=craft_guide.saved_you_need_lists[stack_name.."@|²"..tostring(alternate)]
+			globalcount=tonumber(craft_guide.saved_you_need_lists[stack_name.."@|³"..tostring(alternate)])
+			if globalcount==nil or globalcount<1 then
+				globalcount=1
+			end
+			local v=1
+			for _item,_ in pairs(craft_guide.you_need_list) do
+				inv:set_stack("youneed", v, _item)
+				v=v+1
+			end
+		else
+			list[stack_name] = {}
+			list[stack_name] = 1
+			for j=1,6,1 do	--main iteration loop for resolving recipes into base items
+				local finished=1
+				local limit=inv:get_size("youneed")
+				local k=0
+				for name,count in pairs(list) do
+					if k>limit then
+						break
+					end
+					k=k+1
+					local isbase=0
+					if name==nil or name=="" or count==0 or string.sub(name,1,6)=="group:" then
+						isbase=1
+					elseif j>1 or k>1 then
+						for ii=1,999,1 do
+							if craft_guide.basic_item_prefixes[ii]==nil or craft_guide.basic_item_prefixes[ii]=="" then  
+								break
+							elseif string.sub(name,1,string.len(craft_guide.basic_item_prefixes[ii]))==
+								string.lower(craft_guide.basic_item_prefixes[ii]) then
+								isbase=1
+								break
+							end
+						end
+						if isbase==0 then
+							for aa=1,999,1 do
+								if craft_guide.basic_item_groups[aa]==nil or craft_guide.basic_item_groups[aa]=="" then  
+									break
+								elseif minetest.get_item_group(name, string.lower(craft_guide.basic_item_groups[aa]))>0 then
+									isbase=1
+									break
+								end
+							end
+							if isbase==0 then
+								for bb=1,999,1 do
+									if craft_guide.basic_item_endings[bb]==nil 
+										or craft_guide.basic_item_endings[bb]=="" then  	
+										break
+									elseif string.sub(name,string.len(name)-
+										(string.len(craft_guide.basic_item_endings[bb])-1)	)==
+										string.lower(craft_guide.basic_item_endings[bb]) then
+										isbase=1
+										break
+									end
+								end
+								if isbase==0 then
+									for cc=1,999,1 do
+										if craft_guide.basic_items[cc]==nil or craft_guide.basic_items[cc]=="" then  
+											break
+										elseif name==string.lower(craft_guide.basic_items[cc]) then
+											isbase=1
+											break
+										end
+									end
+								end
+							end
+						end
+					end
+					crafts = craft_guide.crafts[name]
+					if crafts==nil or ((j>1 or k>1) and crafts[1].type~=nil 
+						and crafts[1].type~="cooking" and crafts[1].type~="shapeless") 	then
+						isbase=1
+					end
+					if isbase==0 then
+						finished=0
+						if crafts ~= nil then
+							local istest=1
+							local bestcraft=1
+							local bestvalue=10 --lower is better
+
+
+--too much tabs needed, starting here left again till this section is over
+for craftnumber=1,#crafts+1,1 do
+	if craftnumber>49 then
+		craftnumber=#crafts+1
+	end
+	local index=craftnumber
+	if j>1 then
+		if #crafts==1 and index<=#crafts then 
+			bestvalue=0
+			istest=0
+		elseif index>#crafts or bestvalue==0 then
+			index=bestcraft
+			bestvalue=0
+			istest=0
+		end
+	else
+		bestvalue=0
+		index=alternate
+		istest=0
+	end
+	local craft = crafts[index]
+	if craft~=nil and craft.type~="fuel" then
+		local amount=count
+		if istest==0 then
+			list[name]=0
+			local output_count=ItemStack(craft.output):get_count()
+			if output_count~=1 and (j>1 or k>1) then
+				if amount/output_count==math.floor(amount/output_count) then
+					amount=amount/output_count
+				else
+					globalcount=globalcount*output_count
+					for _name,_amount in pairs(list) do
+						if tonumber(amount)>0 then
+							list[_name]=tonumber(_amount)*output_count
+						end
+					end
 				end
-				k=k+1
+			end
+		end
+		if istest==1 then
+			list2=list
+			list=nil
+			list={}
+			list=test
+		end
+		if craft.type == "cooking" then
+			if list[craft.recipe]==nil then
+				list[(craft.recipe)]={}
+				list[(craft.recipe)]=amount
+			else
+				local add=amount+tonumber(list[(craft.recipe)])
+				list[(craft.recipe)]=add
+			end
+		elseif craft.type ~=nil and craft.type ~= "fuel" and craft.type ~= "shapeless" then
+			local input=ItemStack(craft.input):get_name()
+			local _count=ItemStack(craft.input):get_count()
+			if input~=nil and input~="" then
+				if list[input]==nil then
+					list[input]={}
+					list[input]=amount*_count
+				else
+					local add=amount*_count+tonumber(list[input])
+					list[input]=add
+				end
+			else
+				input=ItemStack(craft.input[1]):get_name()
+				_count=ItemStack(craft.input[1]):get_count()
+				if input~=nil and input~="" then
+					if list[input]==nil then
+						list[input]={}
+						list[input]=amount*_count
+					else
+						local add=amount*_count+tonumber(list[input])
+						list[input]=add
+					end
+					input=ItemStack(craft.input[2]):get_name()
+					_count=ItemStack(craft.input[2]):get_count()
+					if input~=nil and input~="" then
+						if list[input]==nil then
+						list[input]={}
+						list[input]=amount*_count
+					else
+						local add=amount*_count+tonumber(list[input])
+						list[input]=add
+					end
+				end
+			end
+		end
+	elseif craft.type==nil or craft.type=="shapeless" then
+		if craft.recipe[1] then
+			if (type(craft.recipe[1]) == "string") then
+				if list[craft.recipe[1]]==nil then
+					list[(craft.recipe[1])]={}
+					list[(craft.recipe[1])]=amount
+				else
+					local add =amount+tonumber(list[(craft.recipe[1])])
+					list[(craft.recipe[1])]=add
+				end
+			else
+				if craft.recipe[1][1] then
+					if list[(craft.recipe[1][1])]==nil then
+						list[(craft.recipe[1][1])]={}
+						list[(craft.recipe[1][1])]=amount
+					else
+						local add =amount+tonumber(list[(craft.recipe[1][1])])
+						list[(craft.recipe[1][1])]=add
+					end
+				end
+				if craft.recipe[1][2] then
+					if list[(craft.recipe[1][2])]==nil then
+						list[(craft.recipe[1][2])]={}
+						list[(craft.recipe[1][2])]=amount
+					else
+						local add =amount+tonumber(list[(craft.recipe[1][2])])
+						list[(craft.recipe[1][2])]=add
+					end
+				end
+				if craft.recipe[1][3] then
+					if list[(craft.recipe[1][3])]==nil then
+						list[(craft.recipe[1][3])]={}
+						list[(craft.recipe[1][3])]=amount
+					else
+						local add =amount+tonumber(list[(craft.recipe[1][3])])
+						list[(craft.recipe[1][3])]=add
+					end
+				end
+			end
+		end
+		if craft.recipe[2] then
+			if (type(craft.recipe[2]) == "string") then
+				if list[(craft.recipe[2])]==nil then
+					list[(craft.recipe[2])]={}
+					list[(craft.recipe[2])]=amount
+				else
+					local add =amount+tonumber(list[(craft.recipe[2])])
+					list[(craft.recipe[2])]=add
+				end
+			else
+				if craft.recipe[2][1] then
+					if list[(craft.recipe[2][1])]==nil then
+						list[(craft.recipe[2][1])]={}
+						list[(craft.recipe[2][1])]=amount
+					else
+						local add =amount+tonumber(list[(craft.recipe[2][1])])
+						list[(craft.recipe[2][1])]=add
+					end
+				end
+				if craft.recipe[2][2] then
+					if list[(craft.recipe[2][2])]==nil then
+						list[(craft.recipe[2][2])]={}
+						list[(craft.recipe[2][2])]=amount
+					else
+						local add =amount+tonumber(list[(craft.recipe[2][2])])
+						list[(craft.recipe[2][2])]=add
+					end
+				end
+				if craft.recipe[2][3] then
+					if list[(craft.recipe[2][3])]==nil then
+						list[(craft.recipe[2][3])]={}
+						list[(craft.recipe[2][3])]=amount
+					else
+						local add =amount+tonumber(list[(craft.recipe[2][3])])
+						list[(craft.recipe[2][3])]=add
+					end
+				end
+			end
+		end
+		if craft.recipe[3] then
+			if (type(craft.recipe[3]) == "string") then
+				if list[(craft.recipe[3])]==nil then
+					list[(craft.recipe[3])]={}
+					list[(craft.recipe[3])]=amount
+				else
+					local add =amount+tonumber(list[(craft.recipe[3])])
+					list[(craft.recipe[3])]=add
+				end
+			else
+				if craft.recipe[3][1] then
+					if list[(craft.recipe[3][1])]==nil then
+						list[(craft.recipe[3][1])]={}
+						list[(craft.recipe[3][1])]=amount
+					else
+						local add =amount+tonumber(list[(craft.recipe[3][1])])
+						list[(craft.recipe[3][1])]=add
+					end
+				end
+				if craft.recipe[3][2] then
+					if list[(craft.recipe[3][2])]==nil then
+						list[(craft.recipe[3][2])]={}
+						list[(craft.recipe[3][2])]=amount
+					else
+						local add =amount+tonumber(list[(craft.recipe[3][2])])
+						list[(craft.recipe[3][2])]=add
+					end
+				end
+				if craft.recipe[3][3] then
+					if list[(craft.recipe[3][3])]==nil then
+						list[(craft.recipe[3][3])]={}
+						list[(craft.recipe[3][3])]=amount
+					else
+						local add =amount+tonumber(list[(craft.recipe[3][3])])
+						list[(craft.recipe[3][3])]=add
+					end
+				end
+			end
+		end
+		if craft.recipe[4] then
+			if (type(craft.recipe[4]) == "string") then
+				if list[(craft.recipe[4])]==nil then
+					list[(craft.recipe[4])]={}
+					list[(craft.recipe[4])]=amount
+				else
+					local add =amount+tonumber(list[(craft.recipe[4])])
+					list[(craft.recipe[4])]=add
+				end
+			end
+		end
+		if craft.recipe[5] then
+			if (type(craft.recipe[5]) == "string") then
+				if list[(craft.recipe[5])]==nil then
+					list[(craft.recipe[5])]={}
+					list[(craft.recipe[5])]=amount
+				else
+					local add =amount+tonumber(list[(craft.recipe[5])])
+					list[(craft.recipe[5])]=add
+				end
+			end
+		end
+		if craft.recipe[6] then
+			if (type(craft.recipe[6]) == "string") then
+				if list[(craft.recipe[6])]==nil then
+					list[(craft.recipe[6])]={}
+					list[(craft.recipe[6])]=amount
+				else
+					local add =amount+tonumber(list[(craft.recipe[6])])
+					list[(craft.recipe[6])]=add
+				end
+			end
+		end
+		if craft.recipe[7] then
+			if (type(craft.recipe[7]) == "string") then
+				if list[(craft.recipe[7])]==nil then
+					list[(craft.recipe[7])]={}
+					list[(craft.recipe[7])]=amount
+				else
+					local add =amount+tonumber(list[(craft.recipe[7])])
+					list[(craft.recipe[7])]=add
+				end
+			end
+		end
+		if craft.recipe[8] then
+			if (type(craft.recipe[8]) == "string") then
+				if list[(craft.recipe[8])]==nil then
+					list[(craft.recipe[8])]={}
+					list[(craft.recipe[8])]=amount
+				else
+					local add =amount+tonumber(list[(craft.recipe[8])])
+					list[(craft.recipe[8])]=add
+				end
+			end
+		end
+		if craft.recipe[9] then
+			if (type(craft.recipe[9]) == "string") then
+				if list[(craft.recipe[9])]==nil then
+					list[(craft.recipe[9])]={}
+					list[(craft.recipe[9])]=amount
+				else
+					local add =amount+tonumber(list[(craft.recipe[9])])
+					list[(craft.recipe[9])]=add
+				end
+			end
+		end
+	end
+	if istest==1 then
+		test=list
+		list=nil
+		list={}
+		list=list2
+	end
+end
+	
+if istest==1 then
+	local value=0
+	local h=0
+	for name,testcount in pairs(test) do
+		h=h+1
+		if h>888 then
+			break
+		end
+		if testcount>0 then
+			if name.def==nil or (craft_guide.crafts[name]==nil 
+				and string.sub(name,1,8)=="technic:")
+				then
+				bestvalue=10
+				h=999
+			else
+				local testcrafts = craft_guide.crafts[name]
+				local testcraft=""
+				if testcrafts~=nil then
+					testcraft=testcrafts[1]
+				end
 				local isbase=0
-				if name==nil or name=="" or count==0 or string.sub(name,1,6)=="group:" then
+
+	
+				if name==nil or name==""
+					or string.sub(name,1,6)=="group:" 
+					or testcrafts==nil or testcraft==nil
+					or (testcraft.type~=nil and testcraft.type~="shapeless")
+					then
 					isbase=1
-				elseif j>1 or k>1 then
+				else
 					for ii=1,999,1 do
 						if craft_guide.basic_item_prefixes[ii]==nil or craft_guide.basic_item_prefixes[ii]=="" then  
 							break
@@ -899,463 +1291,106 @@ craft_guide.update_recipe = function(meta, player, stack, alternate)
 						end
 					end
 				end
-				crafts = craft_guide.crafts[name]
-				if crafts==nil or ((j>1 or k>1) and crafts[1].type~=nil and crafts[1].type~="cooking" and crafts[1].type~="shapeless") then
-					isbase=1
-				end
-				if isbase==0 then
-					finished=0
-					if crafts ~= nil then
-						local istest=1
-						local bestcraft=1
-						local bestvalue=10 --lower is better
-						for craftnumber=1,#crafts+1,1 do
-							if craftnumber>49 then
-								craftnumber=#crafts+1
-							end
-							local index=craftnumber
-							if j>1 then
-								if #crafts==1 and index<=#crafts then 
-									bestvalue=0
-									istest=0
-								elseif index>#crafts or bestvalue==0 then
-									index=bestcraft
-									bestvalue=0
-									istest=0
-								end
-							else
-								bestvalue=0
-								index=alternate
-								istest=0
-							end
-							local craft = crafts[index]
-							if craft~=nil and craft.type~="fuel" then
-								local amount=count
-								if istest==0 then
-									list[name]=0
-									local output_count=ItemStack(craft.output):get_count()
-									if output_count~=1 and (j>1 or k>1) then
-										if amount/output_count==math.floor(amount/output_count) then
-											amount=amount/output_count
-										else
-											globalcount=globalcount*output_count
-											for _name,_amount in pairs(list) do
-												if tonumber(amount)>0 then
-													list[_name]=tonumber(_amount)*output_count
-												end
-											end
-										end
-									end
-								end
-								if istest==1 then
-									list2=list
-									list=nil
-									list={}
-									list=test
-								end
-								if craft.type == "cooking" then
-									if list[craft.recipe]==nil then
-										list[(craft.recipe)]={}
-										list[(craft.recipe)]=amount
-									else
-										local add=amount+tonumber(list[(craft.recipe)])
-										list[(craft.recipe)]=add
-									end
-								elseif craft.type ~=nil and craft.type ~= "fuel" and craft.type ~= "shapeless" then
-									local input=ItemStack(craft.input):get_name()
-									local _count=ItemStack(craft.input):get_count()
-									if input~=nil and input~="" then
-										if list[input]==nil then
-											list[input]={}
-											list[input]=amount*_count
-										else
-											local add=amount*_count+tonumber(list[input])
-											list[input]=add
-										end
-									else
-										input=ItemStack(craft.input[1]):get_name()
-										_count=ItemStack(craft.input[1]):get_count()
-										if input~=nil and input~="" then
-											if list[input]==nil then
-												list[input]={}
-												list[input]=amount*_count
-											else
-												local add=amount*_count+tonumber(list[input])
-												list[input]=add
-											end
-											input=ItemStack(craft.input[2]):get_name()
-											_count=ItemStack(craft.input[2]):get_count()
-											if input~=nil and input~="" then
-												if list[input]==nil then
-													list[input]={}
-													list[input]=amount*_count
-												else
-													local add=amount*_count+tonumber(list[input])
-													list[input]=add
-												end
-											end
-										end
-									end
-								elseif craft.type==nil or craft.type=="shapeless" then
-									if craft.recipe[1] then
-										if (type(craft.recipe[1]) == "string") then
-											if list[craft.recipe[1]]==nil then
-												list[(craft.recipe[1])]={}
-												list[(craft.recipe[1])]=amount
-											else
-												local add =amount+tonumber(list[(craft.recipe[1])])
-												list[(craft.recipe[1])]=add
-											end
-										else
-											if craft.recipe[1][1] then
-												if list[(craft.recipe[1][1])]==nil then
-													list[(craft.recipe[1][1])]={}
-													list[(craft.recipe[1][1])]=amount
-												else
-													local add =amount+tonumber(list[(craft.recipe[1][1])])
-													list[(craft.recipe[1][1])]=add
-												end
-											end
-											if craft.recipe[1][2] then
-												if list[(craft.recipe[1][2])]==nil then
-													list[(craft.recipe[1][2])]={}
-													list[(craft.recipe[1][2])]=amount
-												else
-													local add =amount+tonumber(list[(craft.recipe[1][2])])
-													list[(craft.recipe[1][2])]=add
-												end
-											end
-											if craft.recipe[1][3] then
-												if list[(craft.recipe[1][3])]==nil then
-													list[(craft.recipe[1][3])]={}
-													list[(craft.recipe[1][3])]=amount
-												else
-													local add =amount+tonumber(list[(craft.recipe[1][3])])
-													list[(craft.recipe[1][3])]=add
-												end
-											end
-										end
-									end
-									if craft.recipe[2] then
-										if (type(craft.recipe[2]) == "string") then
-											if list[(craft.recipe[2])]==nil then
-												list[(craft.recipe[2])]={}
-												list[(craft.recipe[2])]=amount
-											else
-												local add =amount+tonumber(list[(craft.recipe[2])])
-												list[(craft.recipe[2])]=add
-											end
-										else
-											if craft.recipe[2][1] then
-												if list[(craft.recipe[2][1])]==nil then
-													list[(craft.recipe[2][1])]={}
-													list[(craft.recipe[2][1])]=amount
-												else
-													local add =amount+tonumber(list[(craft.recipe[2][1])])
-													list[(craft.recipe[2][1])]=add
-												end
-											end
-											if craft.recipe[2][2] then
-												if list[(craft.recipe[2][2])]==nil then
-													list[(craft.recipe[2][2])]={}
-													list[(craft.recipe[2][2])]=amount
-												else
-													local add =amount+tonumber(list[(craft.recipe[2][2])])
-													list[(craft.recipe[2][2])]=add
-												end
-											end
-											if craft.recipe[2][3] then
-												if list[(craft.recipe[2][3])]==nil then
-													list[(craft.recipe[2][3])]={}
-													list[(craft.recipe[2][3])]=amount
-												else
-													local add =amount+tonumber(list[(craft.recipe[2][3])])
-													list[(craft.recipe[2][3])]=add
-												end
-											end
-										end
-									end
-									if craft.recipe[3] then
-										if (type(craft.recipe[3]) == "string") then
-											if list[(craft.recipe[3])]==nil then
-												list[(craft.recipe[3])]={}
-												list[(craft.recipe[3])]=amount
-											else
-												local add =amount+tonumber(list[(craft.recipe[3])])
-												list[(craft.recipe[3])]=add
-											end
-										else
-											if craft.recipe[3][1] then
-												if list[(craft.recipe[3][1])]==nil then
-													list[(craft.recipe[3][1])]={}
-													list[(craft.recipe[3][1])]=amount
-												else
-													local add =amount+tonumber(list[(craft.recipe[3][1])])
-													list[(craft.recipe[3][1])]=add
-												end
-											end
-											if craft.recipe[3][2] then
-												if list[(craft.recipe[3][2])]==nil then
-													list[(craft.recipe[3][2])]={}
-													list[(craft.recipe[3][2])]=amount
-												else
-													local add =amount+tonumber(list[(craft.recipe[3][2])])
-													list[(craft.recipe[3][2])]=add
-												end
-											end
-											if craft.recipe[3][3] then
-												if list[(craft.recipe[3][3])]==nil then
-													list[(craft.recipe[3][3])]={}
-													list[(craft.recipe[3][3])]=amount
-												else
-													local add =amount+tonumber(list[(craft.recipe[3][3])])
-													list[(craft.recipe[3][3])]=add
-												end
-											end
-										end
-									end
-									if craft.recipe[4] then
-										if (type(craft.recipe[4]) == "string") then
-											if list[(craft.recipe[4])]==nil then
-												list[(craft.recipe[4])]={}
-												list[(craft.recipe[4])]=amount
-											else
-												local add =amount+tonumber(list[(craft.recipe[4])])
-												list[(craft.recipe[4])]=add
-											end
-										end
-									end
-									if craft.recipe[5] then
-										if (type(craft.recipe[5]) == "string") then
-											if list[(craft.recipe[5])]==nil then
-												list[(craft.recipe[5])]={}
-												list[(craft.recipe[5])]=amount
-											else
-												local add =amount+tonumber(list[(craft.recipe[5])])
-												list[(craft.recipe[5])]=add
-											end
-										end
-									end
-									if craft.recipe[6] then
-										if (type(craft.recipe[6]) == "string") then
-											if list[(craft.recipe[6])]==nil then
-												list[(craft.recipe[6])]={}
-												list[(craft.recipe[6])]=amount
-											else
-												local add =amount+tonumber(list[(craft.recipe[6])])
-												list[(craft.recipe[6])]=add
-											end
-										end
-									end
-									if craft.recipe[7] then
-										if (type(craft.recipe[7]) == "string") then
-											if list[(craft.recipe[7])]==nil then
-												list[(craft.recipe[7])]={}
-												list[(craft.recipe[7])]=amount
-											else
-												local add =amount+tonumber(list[(craft.recipe[7])])
-												list[(craft.recipe[7])]=add
-											end
-										end
-									end
-									if craft.recipe[8] then
-										if (type(craft.recipe[8]) == "string") then
-											if list[(craft.recipe[8])]==nil then
-												list[(craft.recipe[8])]={}
-												list[(craft.recipe[8])]=amount
-											else
-												local add =amount+tonumber(list[(craft.recipe[8])])
-												list[(craft.recipe[8])]=add
-											end
-										end
-									end
-									if craft.recipe[9] then
-										if (type(craft.recipe[9]) == "string") then
-											if list[(craft.recipe[9])]==nil then
-												list[(craft.recipe[9])]={}
-												list[(craft.recipe[9])]=amount
-											else
-												local add =amount+tonumber(list[(craft.recipe[9])])
-												list[(craft.recipe[9])]=add
-											end
-										end
-									end
-								end
-								if istest==1 then
-									test=list
-									list=nil
-									list={}
-									list=list2
-								end
 
-							end
-	
 
-							if istest==1 then
-								local value=0
-								local h=0
-								for name,testcount in pairs(test) do
-									h=h+1
-									if h>888 then
-									break
-									end
-									if testcount>0 then
-										if name.def==nil or (craft_guide.crafts[name]==nil 
-											and string.sub(name,1,8)=="technic:")
-											then
-											bestvalue=10
-											h=999
-										else
-											local testcrafts = craft_guide.crafts[name]
-											local testcraft=""
-											if testcrafts~=nil then
-												testcraft=testcrafts[1]
-											end
-											local isbase=0
-
---too much tabs needed, starting here left again till this section is over
-	
-if	name==nil or name==""
-	or string.sub(name,1,6)=="group:" 
-	or testcrafts==nil or testcraft==nil
-	or (testcraft.type~=nil and testcraft.type~="shapeless")
-	then
-	isbase=1
-else
-	for ii=1,999,1 do
-		if craft_guide.basic_item_prefixes[ii]==nil or craft_guide.basic_item_prefixes[ii]=="" then  
-			break
-		elseif string.sub(name,1,string.len(craft_guide.basic_item_prefixes[ii]))==string.lower(craft_guide.basic_item_prefixes[ii]) then
-			isbase=1
-			break
-		end
-	end
-	if isbase==0 then
-		for aa=1,999,1 do
-			if craft_guide.basic_item_groups[aa]==nil or craft_guide.basic_item_groups[aa]=="" then  
-				break
-			elseif minetest.get_item_group(name, string.lower(craft_guide.basic_item_groups[aa]))>0 then
-				isbase=1
-				break
-			end
-		end
-		if isbase==0 then
-			for bb=1,999,1 do
-				if craft_guide.basic_item_endings[bb]==nil or craft_guide.basic_item_endings[bb]=="" then  
-					break
-				elseif string.sub(name,string.len(name)-(string.len(craft_guide.basic_item_endings[bb])-1))==
-					string.lower(craft_guide.basic_item_endings[bb]) then
-					isbase=1
-					break
-				end
-			end
 			if isbase==0 then
-				for cc=1,999,1 do
-					if craft_guide.basic_items[cc]==nil or craft_guide.basic_items[cc]=="" then  
-						break
-					elseif name==string.lower(craft_guide.basic_items[cc]) then
-						isbase=1
-						break
-					end
-				end
+				value=value+1
+--				if string.find(name,"slab")~=nil
+--					or string.find(name,"panel")~=nil
+--					or string.find(name,"microblock")~=nil
+--					or string.find(name,"stair")~=nil
+--					then
+--					value=value+5
+--				end
 			end
 		end
 	end
 end
 
---starting with correct tabs here again
 
-											if isbase==0 then
-												value=value+1
---												if string.find(name,"slab")~=nil
---												or string.find(name,"panel")~=nil
---												or string.find(name,"microblock")~=nil
---												or string.find(name,"stair")~=nil
---												then
---													value=value+5
---												end
-											end
-										end
+--starting with correct tabs here again:
+									if value<bestvalue then
+										bestcraft=index
+										bestvalue=value
 									end
+								else
+									craftnumber=999
+									break
 								end
-								if value<bestvalue then
-									bestcraft=index
-									bestvalue=value
-								end
-							else
-								craftnumber=999
-								break
 							end
 						end
 					end
 				end
-			end
-			if finished==1 then
-				break
-			end
-		end
-	end
-	local jj=1
-	local duplicate=0
-	for name,amount in pairs(list) do
-		local count=tonumber(amount)
-		if name~=nil and count>0 and string.lower(name)~=string.upper(name) then
-			local lower=string.lower(name)
-			if craft_guide.you_need_list[lower]~=nil and craft_guide.you_need_list[lower]>0 then
-				craft_guide.you_need_list[lower]=count+craft_guide.you_need_list[lower]
-			else
-				inv:add_item("youneed", lower)
-				if inv:get_stack("youneed",jj)==nil or inv:get_stack("youneed",jj):get_name()=="" then
-					for jjj=1,jj,1 do
-						if inv:get_stack("youneed",jjj):get_count()>1 then
-							local alias=string.lower(inv:get_stack("youneed",jjj):get_name())
-							if craft_guide.you_need_list[alias]==nil then
-								craft_guide.you_need_list[alias]={}
-								craft_guide.you_need_list[alias]=count
-								inv:set_stack("youneed",jjj,alias)
-							else							
-								craft_guide.you_need_list[alias]=craft_guide.you_need_list[alias]+count
-								inv:set_stack("youneed",jjj,alias)
-							end
-						end
-					end
-							inv:set_stack("youneed",jj,ItemStack(nil))
-							duplicate=1
-							list[lower]=0
-
-				elseif string.lower(inv:get_stack("youneed",jj):get_name())~=lower then
-					local alias=string.lower(inv:get_stack("youneed",jj):get_name())
-					if craft_guide.you_need_list[alias]~=nil then
-						craft_guide.you_need_list[alias]=craft_guide.you_need_list[alias]+count
-					else
-						if list[alias]==nil then
-							craft_guide.you_need_list[alias]={}
-							craft_guide.you_need_list[alias]=count
-							inv:set_stack("youneed",jj,alias)
-						else
-							list[alias]=list[alias]+count
-						end
-					end
-					list[lower]=0
-				else
-					craft_guide.you_need_list[lower]={}
-					craft_guide.you_need_list[lower]=count
-				end
-				if duplicate==0 then
-					jj=jj+1
-				else
-					duplicate=0
-				end
-				if jj>inv:get_size("youneed") then
+				if finished==1 then
 					break
 				end
 			end
+		end
+		local jj=1
+		local duplicate=0
+		for name,amount in pairs(list) do
+			local count=tonumber(amount)
+			if name~=nil and count>0 and string.lower(name)~=string.upper(name) then
+				local lower=string.lower(name)
+				if craft_guide.you_need_list[lower]~=nil and craft_guide.you_need_list[lower]>0 then
+					craft_guide.you_need_list[lower]=count+craft_guide.you_need_list[lower]
+				else
+					inv:add_item("youneed", lower)
+					if inv:get_stack("youneed",jj)==nil or inv:get_stack("youneed",jj):get_name()=="" then
+						for jjj=1,jj,1 do
+							if inv:get_stack("youneed",jjj):get_count()>1 then
+								local alias=string.lower(inv:get_stack("youneed",jjj):get_name())
+								if craft_guide.you_need_list[alias]==nil then
+									craft_guide.you_need_list[alias]={}
+									craft_guide.you_need_list[alias]=count
+									inv:set_stack("youneed",jjj,alias)
+								else							
+									craft_guide.you_need_list[alias]=craft_guide.you_need_list[alias]+count
+									inv:set_stack("youneed",jjj,alias)
+								end
+							end
+						end
+						inv:set_stack("youneed",jj,ItemStack(nil))
+						duplicate=1
+						list[lower]=0
+
+					elseif string.lower(inv:get_stack("youneed",jj):get_name())~=lower then
+						local alias=string.lower(inv:get_stack("youneed",jj):get_name())
+						if craft_guide.you_need_list[alias]~=nil then
+							craft_guide.you_need_list[alias]=craft_guide.you_need_list[alias]+count
+						else
+							if list[alias]==nil then
+								craft_guide.you_need_list[alias]={}
+								craft_guide.you_need_list[alias]=count
+								inv:set_stack("youneed",jj,alias)
+							else
+								list[alias]=list[alias]+count
+							end
+						end
+						list[lower]=0
+					else
+						craft_guide.you_need_list[lower]={}
+						craft_guide.you_need_list[lower]=count
+					end
+					if duplicate==0 then
+						jj=jj+1
+					else
+						duplicate=0
+					end
+					if jj>inv:get_size("youneed") then
+						break
+					end
+				end
+			end
+			craft_guide.saved_you_need_lists[stack_name.."@|²"..tostring(alternate)]={}
+			craft_guide.saved_you_need_lists[stack_name.."@|²"..tostring(alternate)]=craft_guide.you_need_list
+			craft_guide.saved_you_need_lists[stack_name.."@|³"..tostring(alternate)]={}
+			craft_guide.saved_you_need_lists[stack_name.."@|³"..tostring(alternate)]=tostring(globalcount)
 		end
 	end
 	meta:set_string("globalcount",tostring(globalcount))
 	meta:set_string("formspec",craft_guide.get_craft_guide_formspec(meta))
 end
-
 
 -- create_inventory
 craft_guide.create_inventory = function(inv, search)
