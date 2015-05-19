@@ -25,6 +25,11 @@ craft_guide = {}
 craft_guide.you_need=true
 
 
+-- enable or disable copy craft recipe to crafting grid feature
+
+craft_guide.copy_button=true
+
+
 -- show items which only have have craft recipes of type "fuel". This are for example: tree trunks, saplings, .. etc.
 --Don't matter when craft_guide.show_fuel=true
 
@@ -346,6 +351,20 @@ craft_guide.get_craft_guide_formspec = function(meta, search, page, alternate)
 			.."button[0,8.4;2,1;alternate;Alternate]"
 
 	end
+	if craft_guide.copy_button 
+		and inv:get_stack("output",1)~=nil and inv:get_stack("output",1):get_name()~=nil and inv:get_stack("output",1):get_name()~=nil then
+		if craft_guide.crafts[inv:get_stack("output",1):get_name()]~=nil then
+			if craft_guide.crafts[inv:get_stack("output",1):get_name()][alternate]~=nil then
+				if (craft_guide.crafts[inv:get_stack("output",1):get_name()][alternate]).type==nil
+					or (craft_guide.crafts[inv:get_stack("output",1):get_name()][alternate]).type=="shapeless" then
+					formspec=formspec.."label[5.45,8.6;Prepare to craft:]"
+					.."button[5.6,9.2;0.7,0.8;copy1;1]"
+					.."button[6.2,9.2;0.7,0.8;copy10;10]"
+					.."button[6.8,9.2;0.7,0.8;copy99;99]"
+				end
+			end
+		end
+	end
 	return formspec
 end
 
@@ -364,6 +383,10 @@ craft_guide.on_construct = function(pos)
 	inv:set_size("youneed", 6*15)
 	inv:set_size("bin", 1)
 	inv:set_size("add", 1)
+	inv:set_size("copylist", 9)
+	inv:set_size("tempinv", 42)
+	inv:set_size("tempmain", 32)
+	inv:set_size("tempresult", 1)
 	craft_guide.create_inventory(inv)
 	meta:set_string("formspec",craft_guide.get_craft_guide_formspec(meta))
 	meta:set_string("out","")
@@ -381,6 +404,12 @@ craft_guide.on_receive_fields = function(pos, formname, fields, player)
 			meta = minetest.env:get_meta(pos)
 			inv = meta:get_inventory()
 		end
+	if inv:get_size("copylist")==nil or inv:get_size("copylist")~=9 then  
+		inv:set_size("copylist", 9)
+		inv:set_size("tempinv", 42)
+		inv:set_size("tempmain", 32)
+		inv:set_size("tempresult", 1)
+	end
 	local size = inv:get_size("main",1)
 	local stack = inv:get_stack("output",1)
 	local crafts = craft_guide.crafts[stack:get_name()]
@@ -414,6 +443,259 @@ craft_guide.on_receive_fields = function(pos, formname, fields, player)
 		end		
 		meta:set_string("saved_search", "|")
 		page = 1
+	end
+
+	-- copy buttons:
+
+	local copy=0
+	if fields.copy99 then
+		copy=99
+	elseif fields.copy10 then
+		copy=10
+	elseif fields.copy1 then
+		copy=1
+	end
+	if copy~=0 and player~=nil then
+		local inv2=player:get_inventory()
+		if inv2~=nil then
+			for i=0,inv:get_size("copylist"),1 do
+				inv:set_stack("copylist",i,ItemStack(nil))
+			end
+			for i=0,inv:get_size("build"),1 do
+				local stk=inv:get_stack("build", i)
+				if stk:get_count()>0 then
+					if string.sub(stk:get_name(),1,6)=="group:" then
+						inv:set_stack("copylist",i,ItemStack(stk:get_name().."~|@q 1"))
+					else
+						inv:add_item("copylist",ItemStack(stk:get_name().."~|@q 1")) --trick, because stacksize of unknown items is 99
+					end
+				end
+			end
+			inv:set_list("tempinv",inv2:get_list("main"))
+			for i=0,inv2:get_size("craft"),1 do
+				local st=inv2:get_stack("craft",i)
+				if st:get_count()>0 then
+					inv:add_item("tempinv",st)
+				end
+			end
+			local st=inv2:get_stack("craftresult",1)
+			if st:get_count()>0 then
+				inv:add_item("tempinv",st)
+			end
+			for i=0,inv:get_size("copylist"),1 do
+				local stk=inv:get_stack("copylist", i)
+				local stkcount=stk:get_count()
+				if stkcount>0 then
+					local stkname=stk:get_name()
+					if string.sub(stkname,1,6)~="group:" then
+						stk=ItemStack(string.sub(stkname,1,string.len(stkname)-4).." "..tostring(stkcount*copy))
+						inv:set_stack("copylist",i,ItemStack(nil))
+						local lastcheck=0
+						local removed=0
+						for x=1,9,1 do
+							if stk:get_count()>stk:get_stack_max()+removed then
+								stk=ItemStack(stk:get_name().." "..tostring(stk:get_stack_max()))
+							else
+								lastcheck=1
+							end
+							removed=removed+(inv:remove_item("tempinv",stk)):get_count()
+							if lastcheck==1 or not (inv:contains_item("tempinv",ItemStack(stk:get_name().." 1"))) then
+								break
+							end
+						end
+						if copy>math.floor(removed/stkcount) then
+							inv:add_item("tempinv",ItemStack(stk:get_name().." "..tostring(removed-(math.floor(removed/stkcount)*stkcount))))
+							for jj=0,i-1,1 do
+								local oldstack=inv:get_stack("copylist", jj)
+								if oldstack:get_count()>0 and string.sub(oldstack:get_name(),1,6)~="group:"then
+									local newstack=ItemStack(oldstack:get_name().." "..tostring((copy-math.floor(removed/stkcount))*oldstack:get_count()))
+									inv:add_item("tempinv", newstack)
+								end
+							end
+							copy=math.floor(removed/stkcount)
+						end
+						lastcheck=0
+						if copy<1 then
+							break
+						end
+							
+					end
+				end
+			end
+			if copy>0 then
+			for i=0,inv:get_size("copylist"),1 do
+				local stk=inv:get_stack("copylist", i)
+				local stkcount=stk:get_count()
+				if stkcount>0 then
+					local stkname=stk:get_name()
+					if string.sub(stkname,1,6)=="group:" then
+						local success=false
+						local groups=string.sub(stkname,7,string.len(stkname)-4)
+						for count=copy,0,-1 do
+							for i2=0,inv:get_size("tempinv"),1 do
+								local check=inv:get_stack("tempinv",i2)
+								if check:get_count()>0 then
+									local name=check:get_name()
+									local hasgroup=1
+									for group in string.gmatch(groups,"([^,]+)") do
+										if minetest.get_item_group(name, group)==0 then
+											hasgroup=0
+											break
+										end
+									end
+									if hasgroup==1 then
+	
+										if inv:contains_item("tempinv",ItemStack(name.." "..tostring(count))) then	
+											inv:remove_item("tempinv",ItemStack(name.." "..tostring(count)))
+											inv:set_stack("copylist",i,ItemStack(name.." 1"))
+											success=true
+											break
+										end
+									end
+								end
+							end
+							if copy>count then
+								for jj=0,i-1,1 do
+									local oldstack=inv:get_stack("copylist", jj)
+									if oldstack:get_count()>0 and string.sub(oldstack:get_name(),1,6)~="group:" then
+										local newstack=ItemStack(oldstack:get_name().." "..tostring((copy-count)*oldstack:get_count()))
+										inv:add_item("tempinv", newstack)
+									end
+								end
+								copy=count
+							end
+							if success or count<1 then
+								break
+							end
+
+						end
+					end
+				end
+				if copy<1 then
+					break
+				end
+			end
+			end
+			if copy>0 then
+				for i=0,inv:get_size("build"),1 do 
+					local stk=inv:get_stack("build", i)
+					local stkcount=stk:get_count()
+					if stkcount>0 then
+						local stkname=stk:get_name()
+						if string.sub(stkname,1,6)=="group:" then
+							stk=inv:get_stack("copylist", i)
+							stkname=stk:get_name()
+						end
+
+						stk=ItemStack(stkname.." "..tostring(copy))
+						inv:set_stack("copylist",i,stk)
+					end
+				end
+
+				local clean=1
+				if copy>0 then
+					for i=0,inv:get_size("tempmain"),1 do
+						inv:set_stack("tempmain",i,ItemStack(nil))
+					end
+
+					local stk=inv2:get_stack("craftresult", 1)
+					if stk:get_count()>0 then
+						if inv:contains_item("tempinv",stk) then
+							inv:remove_item("tempinv",stk)
+							inv:add_item("tempresult",1,stk)
+						else 
+							inv:add_item("tempresult",1,ItemStack(nil))
+						end
+					end
+					for i=0,inv2:get_size("main"),1 do --restore players main inventory
+						local stk=inv2:get_stack("main", i)
+						if stk:get_count()>0 then
+							local removed=(inv:remove_item("tempinv",stk)):get_count()
+							if removed>0 then
+								inv:set_stack("tempmain",i,ItemStack(stk:get_name().." "..tostring(removed)))
+							end
+						end
+					end
+					for i=0,inv:get_size("tempinv"),1 do --check if items left in crafting grid can be moved to players inventory
+						local stk=inv:get_stack("tempinv", i)
+						if stk:get_count()>0 then
+							if inv:room_for_item("tempmain",stk) then
+								inv:add_item("tempmain",stk)
+								inv:set_stack("tempinv",i,ItemStack(nil))
+							else 
+								clean=0
+							end
+						end
+					end
+					if clean==0 then
+						local free=0
+						for i=0,inv:get_size("tempmain"),1 do --check if two small stacks of same item can be joined to one big stack
+							local stk=inv:get_stack("tempmain", i)
+							if stk:get_count()>0 then
+								if inv:room_for_item("tempmain",ItemStack(stk:get_name().." "..tostring(stk:get_stack_max()*(1+free)))) then
+									inv:set_stack("tempmain",i,ItemStack(nil))
+									inv:add_item("tempmain",stk)
+									free=free+1
+								end
+							end
+						end
+						for i=0,inv:get_size("build"),1 do --try to move more items to crafting grid
+							local stk=inv:get_stack("build", i)
+							local stkcount=stk:get_count()
+							if stkcount>0 then
+								local stkname=stk:get_name()
+								stk=ItemStack(stkname.." 1")
+								local stkmax=ItemStack(stkname.." "..tostring(stk:get_stack_max()-copy))
+								if inv:contains_item("tempinv",stk) then
+									local removed=inv:remove_item("tempinv",stkmax)
+									inv:set_stack("copylist",i,ItemStack(stkname.." "..tostring(removed:get_count()+copy)))
+								elseif inv:contains_item("tempmain",stk) then
+									local removed=inv:remove_item("tempmain",stkmax)
+									inv:set_stack("copylist",i,ItemStack(stkname.." "..tostring(removed:get_count()+copy)))
+								end
+							end
+						end
+
+						for i=0,inv:get_size("tempinv"),1 do --last try to place all left items in main inventory
+							local stk=inv:get_stack("tempinv", i)
+							if stk:get_count()>0 then
+								if inv:room_for_item("tempmain",stk) then
+									inv:add_item("tempmain",stk)
+									inv:set_stack("tempinv",i,ItemStack(nil))
+								else 
+									minetest.chat_send_player(player:get_player_name(), "Can't copy this recipe to crafting grid because your inventory is too full to move items around!")
+
+									copy=0
+									break
+								end
+							end
+						end
+					end
+					if copy>0 then --we can successfully craft some of this item
+						for i=0,inv:get_size("copylist"),1 do 
+							local stk=inv:get_stack("copylist", i)
+							local stkcount=stk:get_count()
+							if stkcount>copy then --if possible remove additional items back to inventory
+								stk=ItemStack(stk:get_name().." 1")
+								if inv:room_for_item("tempmain",stk) then
+									local left=inv:add_item("tempmain",ItemStack(stk:get_name().." "..tostring(stkcount-copy)))
+									if left~=nil and left~=0 then 
+										inv:set_stack("copylist", i,ItemStack(stk:get_name().." "..tostring(copy+left:get_count())))	
+									end
+									
+								end
+							end
+						end
+	
+						--copy tempinventory to real inventory
+						inv2:set_list("craft",inv:get_list("copylist"))
+						inv2:set_list("main",inv:get_list("tempmain"))
+						inv2:set_list("craftresult",inv:get_list("tempresult"))
+					
+					end				
+				end
+			end
+		end
 	end
 
 	-- change page
