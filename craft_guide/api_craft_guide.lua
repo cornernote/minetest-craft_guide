@@ -687,6 +687,57 @@ craft_guide.on_receive_fields = function(pos, formname, fields, player)
 							end
 						end
 	
+						--add wear and metadata to items again
+						for t=0,42,1 do 
+							local tx=-10
+							local invlist="tempmain"
+							if t<=9 then
+								invlist="copylist"
+								tx=0							
+							end
+							local itemStack=inv:get_stack(invlist, tx+t)
+							if itemStack:get_count()==1 then
+								if itemStack:get_stack_max()==1 then
+									local itempos=t
+									local found=false
+									local itemStack2=ItemStack(nil)
+									for slot=0,42,1 do
+										if slot<=9 then
+											itemStack2=inv2:get_stack("craft", slot)
+											if itemStack2:get_name()==itemStack:get_name() then
+												found=true
+											end
+										else
+											itemStack2=inv2:get_stack("main", slot-10)
+											if itemStack2:get_name()==itemStack:get_name() then
+												found=true
+											end
+										end
+										if found then
+											found=false
+											inv:set_stack(invlist, t+tx,itemStack2)
+											for tt=itempos+1,42,1 do
+												if tt<=9 then
+													itemStack2=inv:get_stack("copylist", tt)
+													if itemStack2:get_name()==itemStack:get_name() then
+														itemStack=inv2:get_stack("copylist", tt)
+														itempos=tt
+														break
+													end
+												else
+													itemStack2=inv:get_stack("tempmain",tt-10)
+													if itemStack2:get_name()==itemStack:get_name() then
+														itemStack=inv:get_stack("tempmain", tt-10)
+														itempos=tt
+														break
+													end
+												end
+											end
+										end
+									end	
+								end
+							end
+						end
 						--copy tempinventory to real inventory
 						inv2:set_list("craft",inv:get_list("copylist"))
 						inv2:set_list("main",inv:get_list("tempmain"))
