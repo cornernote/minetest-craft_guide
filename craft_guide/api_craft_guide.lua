@@ -720,7 +720,7 @@ craft_guide.on_receive_fields = function(pos, formname, fields, player)
 												if tt<=9 then
 													itemStack2=inv:get_stack("copylist", tt)
 													if itemStack2:get_name()==itemStack:get_name() then
-														itemStack=inv2:get_stack("copylist", tt)
+														itemStack=inv:get_stack("copylist", tt)
 														itempos=tt
 														break
 													end
