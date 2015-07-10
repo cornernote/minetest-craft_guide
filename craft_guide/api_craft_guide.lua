@@ -271,7 +271,7 @@ craft_guide.get_craft_guide_formspec = function(meta, search, page, alternate)
 				.."tooltip[move_down;Move the list of needed items downwards]"
 				..craft_guide.build_button_list(meta,inv,"youneed",12,29,0,1,14,0)
 		end
-		changeable_part= changeable_part..craft_guide.get_amounts(meta,inv,"youneed")
+		changeable_part= changeable_part..craft_guide.get_amounts(meta,inv,alternate,"youneed")
 
 	end
  	if meta:get_string("switch")=="bookmarks" or (not craft_guide.you_need) or meta:get_string("poslist")=="up" then
@@ -926,7 +926,7 @@ end
 
 
 -- returns a formspec string with item amounts
-craft_guide.get_amounts = function(meta,inv,list)
+craft_guide.get_amounts = function(meta,inv,alternate,list)
 	local amounts=""
 	local xx=8.1
 	local yy=7.45
@@ -938,15 +938,34 @@ craft_guide.get_amounts = function(meta,inv,list)
 		w=14
 		size=70
 	end
+		local globalcnt=meta:get_string("globalcount")
+		local stack=inv:get_stack("output", 1)
+		if stack:get_count()==0 then
+			return ""
+		end
+		if alternate==nil then
+			alternate=1
+		end
+		local saved=craft_guide.you_need_list
+		local stack_name=stack:get_name()
+		if craft_guide.saved_you_need_lists[stack_name.."@|²"..tostring(alternate)]~=nil then
+			globalcnt=craft_guide.saved_you_need_lists[stack_name.."@|³"..tostring(alternate)]
+			saved=craft_guide.saved_you_need_lists[stack_name.."@|²"..tostring(alternate)]
+		else
+			minetest.after(0.2,function()
+				craft_guide.update_recipe(meta, nil, stack, alternate)
+			end)
+			return ""
+		end
+		local cnt=0
 	for jj=1,size,1 do
 		local item=string.lower(inv:get_stack(list,jj):get_name())
-		local cnt=meta:get_string("globalcount")
 		if item==nil or item=="" then
 			break
 		end
-		local count=craft_guide.you_need_list[item]
+		local count=saved[item]
 		if count~=nil then
-			cnt=math.floor(((count)/tonumber(meta:get_string("globalcount")))*1000+0.49)/1000
+			cnt=math.floor(((count)/globalcnt)*1000+0.49)/1000
 			if cnt>1000 then
 				cnt=math.floor(cnt+0.49)
 			elseif cnt>100 then
