@@ -1036,16 +1036,18 @@ craft_guide.update_recipe = function(meta, player, stack, alternate)
 	alternate = tonumber(alternate) or 1
 	local crafts = craft_guide.crafts[stack:get_name()]
 	if crafts == nil then
-		if stack:get_name()~=nil and stack:get_name()~="" then
-			minetest.chat_send_player(player:get_player_name(), "no recipe available for "..stack:get_name())
+		if player~=nil then
+			if stack:get_name()~=nil and stack:get_name()~="" then
+				minetest.chat_send_player(player:get_player_name(), "no recipe available for "..stack:get_name())
+			end
+			meta:set_string("formspec",craft_guide.get_craft_guide_formspec(meta))
 		end
-		meta:set_string("formspec",craft_guide.get_craft_guide_formspec(meta))
 		return
 	end
 	if alternate < 1 or alternate > #crafts then
 		alternate = 1
 	end
-	if stack:get_name()~=nil and stack:get_name()~="" then
+	if stack:get_name()~=nil and player~=nil and stack:get_name()~="" then
 		if meta:get_string("switch")=="youneed" then
 			craft_guide.log(player:get_player_name().." shows needed items for recipe "..alternate.." for "..stack:get_name())
 		else
