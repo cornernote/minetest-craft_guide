@@ -24,14 +24,13 @@ craft_guide = {}
 
 craft_guide.you_need=true
 
-
 -- enable or disable copy craft recipe to crafting grid feature
 
 craft_guide.copy_button=true
 
 
 -- show items which only have have craft recipes of type "fuel". This are for example: tree trunks, saplings, .. etc.
---Don't matter when craft_guide.show_fuel=true
+--Don't matter when craft_guide.show_fuel=false
 
 craft_guide.show_all_fuel_crafts=false
 
@@ -44,12 +43,12 @@ craft_guide.show_fuel=true
 --shows crafts other then normal crafts in crafting grid or of type "cooking" or "fuel".
 --at the moment this are crafts for machines from technic mod
 
-craft_guide.other_crafting_types = true
+craft_guide.other_crafting_types=true
 
 
 --don't show crafts which are registered in moreblocks mod to get the original item back from its slabs, panels, microblocks, etc...
 --and don't show all ingots, dusts and blocks of uranium with different percentages
-craft_guide.remove_cluttering_crafts = true
+craft_guide.remove_cluttering_crafts=true
 
 
 -- here you can define base items for "you need" feature
@@ -109,6 +108,7 @@ craft_guide.basic_items	= {
 	"default:mese_crystal",
 	"default:glass",
 	"default:obsidian",
+	"default:wheat",
 	"bucket:bucket_water",
 	"bucket:bucket_lava",
 	"technic:uranium",
@@ -116,7 +116,7 @@ craft_guide.basic_items	= {
 	"homedecor:roof_tile_terracotta",
 	"homedecor:terracotta_base",
 	"mesecons_materials:glue",
-
+	"wool:white"
 }
 
 -- END OF SETTINGS SECTION
@@ -223,6 +223,7 @@ craft_guide.get_craft_guide_formspec = function(meta, search, page, alternate)
 		search = meta:get_string("search")
 	end
 	if meta:get_string("formspec")=="" then
+		meta:set_string("owner","")
 		meta:set_string("saved_search","|")
 		meta:set_string("saved_page","1")
 		meta:set_string("saved_pages","1")
@@ -231,6 +232,8 @@ craft_guide.get_craft_guide_formspec = function(meta, search, page, alternate)
 		meta:set_string("globalcount","1")
 		meta:set_string("time","0")
 		meta:set_string("method","Cook")
+		meta:set_string("locked","0")
+		meta:set_string("isowner","0")
 	end	
 	if page == nil then 
 		page = craft_guide.get_current_page(meta) 
@@ -250,7 +253,7 @@ craft_guide.get_craft_guide_formspec = function(meta, search, page, alternate)
 	end
 	local backbutton=""
 	if meta:get_string("saved_search")~="|" then
-		backbutton="button[6,5.8;2.7,1;back_button;<--- Back]"
+		backbutton="button[6.3,5.8;2.7,1;back_button;<--- Back]"
 	end
 	local changeable_part=""
 	if meta:get_string("switch")=="youneed" and craft_guide.you_need then
@@ -271,7 +274,7 @@ craft_guide.get_craft_guide_formspec = function(meta, search, page, alternate)
 				.."tooltip[move_down;Move the list of needed items downwards]"
 				..craft_guide.build_button_list(meta,inv,"youneed",12,29,0,1,14,0)
 		end
-		changeable_part= changeable_part..craft_guide.get_amounts(meta,inv,alternate,"youneed")
+		changeable_part= changeable_part..craft_guide.get_amounts(meta,inv,"youneed")
 
 	end
  	if meta:get_string("switch")=="bookmarks" or (not craft_guide.you_need) or meta:get_string("poslist")=="up" then
@@ -339,9 +342,6 @@ craft_guide.get_craft_guide_formspec = function(meta, search, page, alternate)
 				formspec=formspec.."label[6.02,8.17;"..meta:get_string("time").." sec]"
 			end
 		end
-		formspec=formspec..changeable_part
-		.."button_exit[0,9.2;1,0.8;close_mm;ESC]"
-
 	if alternates > 1 then
 		if alternate>alternates then
 			alternate=1	
@@ -351,20 +351,43 @@ craft_guide.get_craft_guide_formspec = function(meta, search, page, alternate)
 			.."button[0,8.4;2,1;alternate;Alternate]"
 
 	end
-	if craft_guide.copy_button 
-		and inv:get_stack("output",1)~=nil and inv:get_stack("output",1):get_name()~=nil and inv:get_stack("output",1):get_name()~=nil then
-		if craft_guide.crafts[inv:get_stack("output",1):get_name()]~=nil then
-			if craft_guide.crafts[inv:get_stack("output",1):get_name()][alternate]~=nil then
-				if (craft_guide.crafts[inv:get_stack("output",1):get_name()][alternate]).type==nil
-					or (craft_guide.crafts[inv:get_stack("output",1):get_name()][alternate]).type=="shapeless" then
-					formspec=formspec.."label[5.45,8.6;Prepare to craft:]"
-					.."button[5.6,9.2;0.7,0.8;copy1;1]"
-					.."button[6.2,9.2;0.7,0.8;copy10;10]"
-					.."button[6.8,9.2;0.7,0.8;copy99;99]"
+
+		if craft_guide.copy_button 
+			and inv:get_stack("output",1)~=nil and inv:get_stack("output",1):get_name()~=nil and inv:get_stack("output",1):get_name()~=nil then
+			if craft_guide.crafts[inv:get_stack("output",1):get_name()]~=nil then
+				if craft_guide.crafts[inv:get_stack("output",1):get_name()][alternate]~=nil then
+					if (craft_guide.crafts[inv:get_stack("output",1):get_name()][alternate]).type==nil
+						or (craft_guide.crafts[inv:get_stack("output",1):get_name()][alternate]).type=="shapeless" then
+						formspec=formspec.."label[5.45,8.6;Prepare to craft:]"
+						.."button[5.6,9.2;0.7,0.8;copy1;1]"
+						.."button[6.2,9.2;0.7,0.8;copy10;10]"
+						.."button[6.8,9.2;0.7,0.8;copy99;99]"
+					end
 				end
 			end
 		end
+		formspec=formspec..changeable_part
+		.."button_exit[0,9.2;1,0.8;close_mm;ESC]"
+
+
+	meta:set_string("saved_formspec",formspec)
+	--this needs to be added last, so it can be changed when restoring a locked formspec
+	if meta:get_string("isowner")=="1" then
+		if meta:get_string("locked")=="0" then
+			formspec=formspec.."button[0.88,9.2;1.22,0.8;lock;Lock]"
+				.."tooltip[lock;Lock Craft Guide in current state]"
+		else
+			formspec=formspec.."button[0.88,9.2;1.22,0.8;lock;Locked]"
+				.."tooltip[lock;Craft Guide is locked - Press again to unlock]"
+		end
+	else
+		if meta:get_string("locked")~="0" and meta:get_string("owner")~=nil and meta:get_string("owner")~="" then
+			formspec=formspec.."label[0.88,9.2;Locked]"
+				.."tooltip[close_mm;   Owner: "..meta:get_string("owner").."]"
+		end
 	end
+
+
 	return formspec
 end
 
@@ -387,7 +410,9 @@ craft_guide.on_construct = function(pos)
 	inv:set_size("tempinv", 42)
 	inv:set_size("tempmain", 32)
 	inv:set_size("tempresult", 1)
-	craft_guide.create_inventory(inv)
+	if meta:get_string("locked")~="1" then
+		craft_guide.create_inventory(inv)
+	end
 	meta:set_string("formspec",craft_guide.get_craft_guide_formspec(meta))
 	meta:set_string("out","")
 	meta:set_string("addindex","1")
@@ -397,18 +422,29 @@ end
 -- on_receive_fields
 craft_guide.on_receive_fields = function(pos, formname, fields, player)
 	local meta = minetest.env:get_meta(pos);
-	local inv = meta:get_inventory()
-		if inv:get_size("additional")==nil or inv:get_size("additional")~=1 then  --old version, construct again
-			local node=minetest.get_node(pos)
-			minetest.set_node(pos, node)
-			meta = minetest.env:get_meta(pos)
-			inv = meta:get_inventory()
+	if meta:get_string("locked")=="1" then
+		craft_guide.save_meta(meta)
+	end
+	if minetest.get_node(pos).name=="craft_guide:sign_wall_locked" or minetest.get_node(pos).name=="craft_guide:lcd_pc_locked" then
+		if meta:get_string("owner")=="" then
+			meta:set_string("owner",player:get_player_name())
+			meta:set_string("isowner","1")
+		elseif meta:get_string("owner")==player:get_player_name() then
+			meta:set_string("isowner","1")
 		end
+	end
+	local inv = meta:get_inventory()
+	if inv:get_size("additional")==nil or inv:get_size("additional")~=1 then  --old version, construct again
+		local node=minetest.get_node(pos)
+		minetest.set_node(pos, node)
+		meta = minetest.env:get_meta(pos)
+		inv = meta:get_inventory()
+	end
 	if inv:get_size("copylist")==nil or inv:get_size("copylist")~=9 then  
-		inv:set_size("copylist", 9)
-		inv:set_size("tempinv", 42)
-		inv:set_size("tempmain", 32)
-		inv:set_size("tempresult", 1)
+	inv:set_size("copylist", 9)
+	inv:set_size("tempinv", 42)
+	inv:set_size("tempmain", 32)
+	inv:set_size("tempresult", 1)
 	end
 	local size = inv:get_size("main",1)
 	local stack = inv:get_stack("output",1)
@@ -424,12 +460,14 @@ craft_guide.on_receive_fields = function(pos, formname, fields, player)
 
 	
 	-- search
+	local update_search=false
 	local search
 	search = fields.craft_guide_search_box
 	if search~=nil then
 		if string.lower(search)==string.upper(search) and tonumber(search)==nil and search~="*" then
 			search=""
 		end
+		update_search=true
 	else
 			search=meta:get_string("search")
 	end
@@ -443,6 +481,7 @@ craft_guide.on_receive_fields = function(pos, formname, fields, player)
 		end		
 		meta:set_string("saved_search", "|")
 		page = 1
+		update_search=true
 	end
 
 	-- copy buttons:
@@ -720,7 +759,7 @@ craft_guide.on_receive_fields = function(pos, formname, fields, player)
 												if tt<=9 then
 													itemStack2=inv:get_stack("copylist", tt)
 													if itemStack2:get_name()==itemStack:get_name() then
-														itemStack=inv:get_stack("copylist", tt)
+														itemStack=inv2:get_stack("copylist", tt)
 														itempos=tt
 														break
 													end
@@ -749,6 +788,7 @@ craft_guide.on_receive_fields = function(pos, formname, fields, player)
 		end
 	end
 
+	
 	-- change page
 	if fields.craft_guide_prev then
 		page = page - 1
@@ -791,6 +831,16 @@ craft_guide.on_receive_fields = function(pos, formname, fields, player)
 			pages=tonumber(meta:get_string("saved_pages"))
 			meta:set_string("saved_search", "|")
 		end
+		update_search=true
+	end
+
+	--lock current state
+	if fields.lock and meta:get_string("owner")==player:get_player_name() then	
+		if meta:get_string("locked")=="2" then
+			meta:set_string("locked","0")
+		else
+			meta:set_string("locked","1")
+		end
 	end
 
 
@@ -808,12 +858,18 @@ craft_guide.on_receive_fields = function(pos, formname, fields, player)
 	if fields.move_up then	
 		if meta:get_string("switch")=="youneed" then
 			meta:set_string("poslist","up")
+			if meta:get_string("locked")~="0" then
+				craft_guide.update_recipe(meta, player, stack, alternate)
+			end
 		end
 	end
 
 	if fields.move_down then	
 		if meta:get_string("switch")=="youneed" then
 			meta:set_string("poslist","down")
+			if meta:get_string("locked")~="0" then
+				craft_guide.update_recipe(meta, player, stack, alternate)
+			end
 		end
 	end
 
@@ -849,6 +905,7 @@ craft_guide.on_receive_fields = function(pos, formname, fields, player)
 				end
 				page = 1
 				search="group:"..group
+				update_search=true
 			end
 		break
 		end
@@ -857,8 +914,17 @@ craft_guide.on_receive_fields = function(pos, formname, fields, player)
 		meta:set_string("switch","bookmarks")
 	end
 	-- update the formspec
-	craft_guide.create_inventory(inv, search)
-	meta:set_string("formspec",craft_guide.get_craft_guide_formspec(meta, search, page, alternate))
+	if meta:get_string("locked")=="2" and (fields["quit"] or fields.close_mm) then
+		craft_guide.restore_meta(meta)
+	else
+		if update_search then
+			craft_guide.create_inventory(inv, search)
+		end
+		meta:set_string("formspec",craft_guide.get_craft_guide_formspec(meta, search, page, alternate))
+		if meta:get_string("locked")=="1" then
+			craft_guide.save_meta(meta)		
+		end
+	end
 end
 
 
@@ -926,7 +992,7 @@ end
 
 
 -- returns a formspec string with item amounts
-craft_guide.get_amounts = function(meta,inv,alternate,list)
+craft_guide.get_amounts = function(meta,inv,list)
 	local amounts=""
 	local xx=8.1
 	local yy=7.45
@@ -938,34 +1004,15 @@ craft_guide.get_amounts = function(meta,inv,alternate,list)
 		w=14
 		size=70
 	end
-		local globalcnt=meta:get_string("globalcount")
-		local stack=inv:get_stack("output", 1)
-		if stack:get_count()==0 then
-			return ""
-		end
-		if alternate==nil then
-			alternate=1
-		end
-		local saved=craft_guide.you_need_list
-		local stack_name=stack:get_name()
-		if craft_guide.saved_you_need_lists[stack_name.."@|²"..tostring(alternate)]~=nil then
-			globalcnt=craft_guide.saved_you_need_lists[stack_name.."@|³"..tostring(alternate)]
-			saved=craft_guide.saved_you_need_lists[stack_name.."@|²"..tostring(alternate)]
-		else
-			minetest.after(0.2,function()
-				craft_guide.update_recipe(meta, nil, stack, alternate)
-			end)
-			return ""
-		end
-		local cnt=0
 	for jj=1,size,1 do
 		local item=string.lower(inv:get_stack(list,jj):get_name())
+		local cnt=meta:get_string("globalcount")
 		if item==nil or item=="" then
 			break
 		end
-		local count=saved[item]
+		local count=craft_guide.you_need_list[item]
 		if count~=nil then
-			cnt=math.floor(((count)/globalcnt)*1000+0.49)/1000
+			cnt=math.floor(((count)/tonumber(meta:get_string("globalcount")))*1000+0.49)/1000
 			if cnt>1000 then
 				cnt=math.floor(cnt+0.49)
 			elseif cnt>100 then
@@ -1036,18 +1083,16 @@ craft_guide.update_recipe = function(meta, player, stack, alternate)
 	alternate = tonumber(alternate) or 1
 	local crafts = craft_guide.crafts[stack:get_name()]
 	if crafts == nil then
-		if player~=nil then
-			if stack:get_name()~=nil and stack:get_name()~="" then
-				minetest.chat_send_player(player:get_player_name(), "no recipe available for "..stack:get_name())
-			end
-			meta:set_string("formspec",craft_guide.get_craft_guide_formspec(meta))
+		if stack:get_name()~=nil and stack:get_name()~="" then
+			minetest.chat_send_player(player:get_player_name(), "no recipe available for "..stack:get_name())
 		end
+		meta:set_string("formspec",craft_guide.get_craft_guide_formspec(meta))
 		return
 	end
 	if alternate < 1 or alternate > #crafts then
 		alternate = 1
 	end
-	if stack:get_name()~=nil and player~=nil and stack:get_name()~="" then
+	if stack:get_name()~=nil and stack:get_name()~="" then
 		if meta:get_string("switch")=="youneed" then
 			craft_guide.log(player:get_player_name().." shows needed items for recipe "..alternate.." for "..stack:get_name())
 		else
@@ -1963,7 +2008,7 @@ craft_guide.add_additional_crafts = function()
 					local name2=ItemStack(recipe.output[2]):get_name()
 					local count=ItemStack(recipe.output[1]):get_count()
 					local count2=ItemStack(recipe.output[2]):get_count()
-					if name~=nil and name~="" and (not craft_guide.remove_cluttering_crafts 
+					if name~=nil and name~="" and (not craft_guide.remove_cluttering_crafts
 						or (string.find(name,"technic:uranium._")==nil
 						and string.find(name,"technic:uranium.._")==nil)) then
 						if craft_guide.crafts[name]==nil then
@@ -1982,7 +2027,7 @@ craft_guide.add_additional_crafts = function()
 						rec.output2=name2.." "..tostring(count2)
 						rec.output=name.." "..tostring(count)
 						table.insert(craft_guide.crafts[name],rec)
-						if name2~=nil and name2~="" and (not craft_guide.remove_cluttering_crafts 
+						if name2~=nil and name2~="" and (not craft_guide.remove_cluttering_crafts
 							or (string.find(name2,"technic:uranium._")==nil
 							and string.find(name2,"technic:uranium.._")==nil)) then
 							if craft_guide.crafts[name2]==nil then
@@ -2080,6 +2125,10 @@ end
 -- allow_metadata_inventory_move
 craft_guide.allow_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
 	local meta = minetest.env:get_meta(pos)
+	if meta:get_string("locked")=="1" then
+		craft_guide.save_meta(meta)
+	end
+
 	local inv = meta:get_inventory()
 	if to_list == "bin" and from_list == "output" then
 		inv:set_stack(from_list,from_index,nil)
@@ -2158,4 +2207,97 @@ end
 -- allow_metadata_inventory_take
 craft_guide.allow_metadata_inventory_take = function(pos, listname, index, stack, player)
 	return 0
+end
+
+craft_guide.save_meta = function (meta)
+	meta:set_string("saved_search2",meta:get_string("saved_search"))
+	meta:set_string("saved_page2",meta:get_string("saved_page"))
+	meta:set_string("saved_pages2",meta:get_string("saved_pages"))
+	meta:set_string("switch2",meta:get_string("switch"))
+	meta:set_string("poslist2",meta:get_string("poslist"))
+	meta:set_string("globalcount2",meta:get_string("globalcount"))
+	meta:set_string("time2",meta:get_string("time"))
+	meta:set_string("method2",meta:get_string("method"))
+	meta:set_string("out2",meta:get_string("out"))
+	meta:set_string("addindex2",meta:get_string("addindex"))
+	meta:set_string("search2",meta:get_string("search"))
+	local inv=meta:get_inventory()
+	inv:set_size("main2", inv:get_size("main"))
+	inv:set_size("output2", 1)
+	inv:set_size("additional2", 1)
+	inv:set_size("build2", 3*3)
+	inv:set_size("cook2", 2*1)
+	inv:set_size("fuel2", 1)
+	inv:set_size("machine2", 1)
+	inv:set_size("bookmark2", 6*3)
+	inv:set_size("youneed2", 6*15)
+	inv:set_size("bin2", 1)
+	inv:set_size("add2", 1)
+	for i=0,inv:get_size("main2"),1 do
+		inv:set_stack("main2", i, inv:get_stack("main",i))
+	end
+	for i=0,inv:get_size("build2"),1 do
+		inv:set_stack("build2", i, inv:get_stack("build",i))
+	end
+	for i=0,inv:get_size("bookmark2"),1 do
+		inv:set_stack("bookmark2", i, inv:get_stack("bookmark",i))
+	end
+	for i=0,inv:get_size("youneed2"),1 do
+		inv:set_stack("youneed2", i, inv:get_stack("youneed",i))
+	end
+	inv:set_stack("cook2", 1, inv:get_stack("cook",1))
+	inv:set_stack("cook2", 2, inv:get_stack("cook",2))
+	inv:set_stack("output2", 1, inv:get_stack("output",1))
+	inv:set_stack("additional2", 1, inv:get_stack("additional",1))
+	inv:set_stack("fuel2", 1, inv:get_stack("fuel",1))
+	inv:set_stack("bin2", 1, inv:get_stack("bin",1))
+	inv:set_stack("machine2", 1, inv:get_stack("machine",1))
+	inv:set_stack("add2", 1, inv:get_stack("add",1))
+	meta:set_string("locked","2")
+	meta:set_string("formspec2",meta:get_string("saved_formspec"))
+
+end
+
+craft_guide.restore_meta = function (meta)
+	meta:set_string("saved_search",meta:get_string("saved_search2"))
+	meta:set_string("saved_page",meta:get_string("saved_page2"))
+	meta:set_string("saved_pages",meta:get_string("saved_pages2"))
+	meta:set_string("switch",meta:get_string("switch2"))
+	meta:set_string("poslist",meta:get_string("poslist2"))
+	meta:set_string("globalcount",meta:get_string("globalcount2"))
+	meta:set_string("time",meta:get_string("time2"))
+	meta:set_string("method",meta:get_string("method2"))
+	meta:set_string("out",meta:get_string("out2"))
+	meta:set_string("addindex",meta:get_string("addindex2"))
+	meta:set_string("search",meta:get_string("search2"))
+	local inv=meta:get_inventory()
+	inv:set_size("main",inv:get_size("main2"))
+	for i=0,inv:get_size("main"),1 do
+		inv:set_stack("main", i, inv:get_stack("main2",i))
+	end
+	for i=0,inv:get_size("build"),1 do
+		inv:set_stack("build", i, inv:get_stack("build2",i))
+	end
+	for i=0,inv:get_size("bookmark"),1 do
+		inv:set_stack("bookmark", i, inv:get_stack("bookmark2",i))
+	end
+	for i=0,inv:get_size("youneed"),1 do
+		inv:set_stack("youneed", i, inv:get_stack("youneed2",i))
+	end
+	inv:set_stack("cook", 1, inv:get_stack("cook2",1))
+	inv:set_stack("cook", 2, inv:get_stack("cook2",2))
+	inv:set_stack("output", 1, inv:get_stack("output2",1))
+	inv:set_stack("additional", 1, inv:get_stack("additional2",1))
+	inv:set_stack("fuel", 1, inv:get_stack("fuel2",1))
+	inv:set_stack("bin", 1, inv:get_stack("bin2",1))
+	inv:set_stack("machine", 1, inv:get_stack("machine2",1))
+	inv:set_stack("add", 1, inv:get_stack("add2",1))
+	meta:set_string("isowner","0")
+	meta:set_string("locked","1")
+local formspec=	meta:get_string("formspec2")
+	meta:set_string("saved_formspec",formspec)
+	formspec=formspec.."label[0.88,9.2;Locked]"
+		.."tooltip[close_mm;   Owner: "..meta:get_string("owner").."]"
+	meta:set_string("formspec",formspec)
+
 end

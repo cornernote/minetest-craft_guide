@@ -31,11 +31,34 @@ minetest.register_craft({
 		{'stairs:slab_stone'},
 	}
 })
---minetest.register_craft({
---	output = 'craft_guide:lcd_pc',
---	recipe = {
---		{'craft_guide:sign_wall'},
---		{'default:glass'},
---		{'stairsplus:slab_stone'},
---	}
---})
+
+-- craft sign
+minetest.register_craft({
+	type = 'shapeless',
+	output = 'craft_guide:sign_wall_locked',
+	recipe = {
+		'craft_guide:sign_wall',
+		'default:steel_ingot',
+	}
+})
+
+
+-- craft pc
+minetest.register_craft({
+	type = 'shapeless',
+	output = 'craft_guide:lcd_pc_locked',
+	recipe = {
+		'craft_guide:lcd_pc',
+		'default:steel_ingot',
+	}
+})
+
+minetest.register_craft({
+	output = 'craft_guide:lcd_pc_locked',
+	recipe = {
+		{'craft_guide:sign_wall_locked'},
+		{'default:glass'},
+		{'stairs:slab_stone'},
+	}
+})
+
