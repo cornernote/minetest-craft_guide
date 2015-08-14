@@ -1,6 +1,14 @@
-# Craft Guide for Minetest
+[![home](https://img.shields.io/badge/craft_guide-home-blue.svg?style=flat-square)](http://cornernote.github.io/minetest-craft_guide)
+[![download](https://img.shields.io/github/tag/cornernote/minetest-craft_guide.svg?style=flat-square&label=release)](https://github.com/cornernote/minetest-craft_guide/archive/master.zip)
+[![git](https://img.shields.io/badge/git-project-green.svg?style=flat-square)](https://github.com/cornernote/minetest-craft_guide)
+[![forum](https://img.shields.io/badge/minetest-mod-green.svg?style=flat-square)](https://forum.minetest.net/viewtopic.php?t=2334)
+[![bower](https://img.shields.io/badge/bower-mod-green.svg?style=flat-square)](https://minetest-bower.herokuapp.com/mods/craft_guide)
 
-Shows crafts for all loaded mods.
+
+## Description
+
+Provides items that will show you how to craft any craftable or cookable item.
+
 
 ## Features
 
