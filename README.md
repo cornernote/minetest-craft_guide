@@ -19,11 +19,14 @@ Provides items that will show you how to craft any craftable or cookable item.
 - Items can be dragged into the `Output` slot, and the craft recipe will be displayed.
 
 
-## Resources
+## Project Resources
 
-- **[Documentation](http://cornernote.github.io/minetest-craft_guide)**
-- **[GitHub Project](https://github.com/cornernote/minetest-craft_guide)**
-- **[Minetest Forum](https://forum.minetest.net/viewtopic.php?id=2334)**
+* [Home](http://cornernote.github.io/minetest-craft_guide)
+* [Download](https://github.com/cornernote/minetest-craft_guide/archive/master.zip)
+* [Project](https://github.com/cornernote/minetest-craft_guide)
+* [Forum](https://forum.minetest.net/viewtopic.php?t=2334)
+* [Bower](https://minetest-bower.herokuapp.com/mods/craft_guide)
+* 
 
 ## Support
 
