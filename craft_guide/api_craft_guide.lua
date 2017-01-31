@@ -588,7 +588,7 @@ craft_guide.on_receive_fields = function(pos, formname, fields, player)
 											inv:remove_item("tempinv",ItemStack(name.." "..tostring(count)))
 											inv:set_stack("copylist",i,ItemStack(name.." 1"))
 											success=true
-											break
+					                         			break
 										end
 									end
 								end
@@ -1832,7 +1832,7 @@ craft_guide.create_inventory = function(inv, search)
 					end
 				end
 			else
-				if craft~=nil and ((craft[1]).type~="fuel" or craft_guide.show_all_fuel_crafts) then
+				if craft~=nil and craft[1]~=nil and ((craft[1]).type~="fuel" or craft_guide.show_all_fuel_crafts) then	
 					table.insert(craft_guide_list, name)
 				end
 			end
